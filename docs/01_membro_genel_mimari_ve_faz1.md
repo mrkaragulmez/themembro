@@ -6,6 +6,7 @@
 
 ---
 
+
 ## Temel Teknolojiler (Tech Stack)
 
 | Katman | Teknoloji | Notlar |
