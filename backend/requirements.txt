@@ -1,0 +1,47 @@
+# backend/requirements.txt
+# Faz 1 + Faz 2 — Python bağımlılıkları
+
+# ─── Web Framework ─────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sse-starlette==2.1.3
+
+# ─── Veritabanı ────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# ─── Auth & Güvenlik ───────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-multipart==0.0.12
+
+# ─── Config ────────────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.6.1
+email-validator==2.2.0
+python-dotenv==1.0.1
+
+# ─── HTTP Client ───────────────────────────────────────────────
+httpx==0.27.2
+
+# ─── Loglama ───────────────────────────────────────────────────
+structlog==24.4.0
+
+# ─── Faz 2: AI Orkestrasyon & Gateway ─────────────────────────
+langchain-core==0.3.29
+langchain-openai==0.3.0
+langgraph==0.2.66
+langgraph-checkpoint-postgres==2.0.12
+
+# ─── Faz 2: LLM Provider'lar ───────────────────────────────────
+openai==1.59.6
+anthropic==0.42.0
+
+# ─── Faz 2: MCP ────────────────────────────────────────────────
+mcp==1.3.0
+
+# ─── Faz 3+ (şimdilik devre dışı) ─────────────────────────────
+# pymilvus
+# neo4j

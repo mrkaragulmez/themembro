@@ -1,0 +1,153 @@
+# Membro v2 - Docker Compose
+# Faz 1: Tüm local geliştirme servisleri
+
+services:
+  # ─── Veritabanı ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: membro_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: membro_db
+      POSTGRES_USER: membro_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-membro_dev_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U membro_user -d membro_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Vektör Veritabanı ─────────────────────────────────────────
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: membro_milvus_etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+    volumes:
+      - milvus_etcd:/etcd
+    command: >
+      etcd -advertise-client-urls=http://127.0.0.1:2379
+           -listen-client-urls http://0.0.0.0:2379
+           --data-dir /etcd
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: membro_milvus_minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - milvus_minio:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    image: milvusdb/milvus:v2.6.0
+    container_name: membro_milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    depends_on:
+      - milvus-etcd
+      - milvus-minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ─── Graf Veritabanı ───────────────────────────────────────────
+  neo4j:
+    image: neo4j:5-community
+    container_name: membro_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-membro_dev_pass}
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ─── Backend ───────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: membro_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://membro_user:${POSTGRES_PASSWORD:-membro_dev_pass}@postgres:5432/membro_db
+      NEO4J_URI: bolt://neo4j:7687
+      MILVUS_URI: http://milvus:19530
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ─── Frontend ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: membro_frontend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: npm run dev
+
+  # ─── Nginx ─────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: membro_nginx
+    restart: unless-stopped
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  milvus_etcd:
+  milvus_minio:
+  milvus_data:
+  neo4j_data:

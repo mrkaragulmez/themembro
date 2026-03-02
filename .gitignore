@@ -1,0 +1,87 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.log
+
+# ─── Alembic ──────────────────────────────────────────────
+# migration cache (versions tracked, pycache değil)
+backend/alembic/__pycache__/
+backend/alembic/versions/__pycache__/
+
+# ─── Environment / Secrets ────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+secrets/
+
+# ─── Node.js / Next.js ────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+.turbo/
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# ─── Docker ───────────────────────────────────────────────
+# docker volumes — bunlar gitignore'da olmalı ama compose dosyası track edilir
+
+# ─── IDE / Editor ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+.DS_Store
+Thumbs.db
+
+# ─── OS ───────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# ─── Test / Coverage ──────────────────────────────────────
+.pytest_cache/
+test-results/
+coverage/
+*.lcov
+
+# ─── Jupyter ──────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── Misc ─────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
