@@ -102,7 +102,7 @@ Bilmediğin bir şey varsa açıkça belirt."""
 
 
 async def knowledge_agent_node(state: MembroState) -> dict:
-    """Bilgi bankası ajanı: retrieval context'i kullanarak yanıt üretir."""
+    """Bilgi bankası ajanı: Milvus vektör araması ile retrieval context'i doldurup yanıt üretir."""
     log.info("knowledge_agent.start", membro_id=state.membro_id)
 
     gateway_url = f"{settings.cf_ai_gateway_url.rstrip('/')}/openai"
@@ -116,17 +116,86 @@ async def knowledge_agent_node(state: MembroState) -> dict:
         },
     )
 
-    # Retrieval context varsa sisteme ekle (Faz 3'te Milvus'tan gelecek)
+    # ── Milvus vektör + Neo4j graph retrieval (Faz 3) ───────────
     system_content = KNOWLEDGE_AGENT_SYSTEM
-    if state.retrieval_context.chunks:
-        context_text = "\n\n".join(state.retrieval_context.chunks)
-        system_content += f"\n\n## Bilgi Bankası Bağlamı\n{context_text}"
+    retrieval_ctx  = state.retrieval_context
+
+    try:
+        from app.agents.tools.knowledge_search import KnowledgeSearchTool
+        from app.core.milvus_client import get_milvus_client
+        get_milvus_client()  # bağlı değilse RuntimeError → sessiz fallback
+
+        last_user_msg = next(
+            (m.content for m in reversed(state.messages)
+             if hasattr(m, "type") and m.type == "human"),
+            "",
+        )
+        if last_user_msg:
+            # ── Milvus vektör arama ──────────────────────────────
+            search_tool = KnowledgeSearchTool()
+            result = await search_tool.run({
+                "query":     last_user_msg,
+                "tenant_id": state.tenant_id,
+                "top_k":     5,
+            })
+            chunks  = (result.result or {}).get("chunks", [])
+            sources = (result.result or {}).get("sources", [])
+
+            if chunks:
+                retrieval_ctx = retrieval_ctx.model_copy(update={
+                    "chunks":  chunks,
+                    "sources": sources,
+                })
+                context_text   = "\n\n---\n\n".join(chunks)
+                system_content += f"\n\n## Bilgi Bankası Bağlamı\n{context_text}"
+                log.info(
+                    "knowledge_agent.milvus_done",
+                    membro_id=state.membro_id,
+                    chunk_count=len(chunks),
+                )
+
+            # ── Neo4j GraphRAG ────────────────────────────────────
+            try:
+                from app.services.graph_ingestion import graph_search
+                from app.core.neo4j_client import get_neo4j_driver
+                get_neo4j_driver()  # bağlı değilse RuntimeError → sessiz atla
+
+                graph_facts = await graph_search(
+                    query=last_user_msg,
+                    tenant_id=state.tenant_id,
+                    top_k=5,
+                )
+                if graph_facts:
+                    retrieval_ctx = retrieval_ctx.model_copy(update={
+                        "graph_facts": graph_facts,
+                    })
+                    graph_text     = "\n".join(graph_facts)
+                    system_content += f"\n\n## Bilgi Grafiği Bağlamı\n{graph_text}"
+                    log.info(
+                        "knowledge_agent.graph_done",
+                        membro_id=state.membro_id,
+                        fact_count=len(graph_facts),
+                    )
+            except RuntimeError:
+                pass  # Neo4j henüz bağlı değil
+            except Exception as exc:
+                log.warning("knowledge_agent.graph_error", error=str(exc))
+
+    except RuntimeError:
+        # Milvus henüz bağlı değil — geliştirme/test ortamı, sessizce atla
+        pass
+    except Exception as exc:
+        log.warning("knowledge_agent.retrieval_error", error=str(exc))
 
     response = await llm.ainvoke(
         [SystemMessage(content=system_content), *state.messages]
     )
 
-    return {"messages": [response], "next_agent": "__end__"}
+    return {
+        "messages":          [response],
+        "next_agent":        "__end__",
+        "retrieval_context": retrieval_ctx,
+    }
 
 
 # ─── Action Agent Node ──────────────────────────────────────────────────────

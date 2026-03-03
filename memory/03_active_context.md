@@ -4,29 +4,31 @@
 
 ## Şu An Neredeyiz?
 
-**Faz 2 TAMAMLANDI.** 18/19 E2E test geçti (1 CF config bağımlı test atlandı, 0 başarısız). LangGraph + MCP + Chat endpoint + CF AI Gateway auth'un tamamı çalışıyor.
+**Faz 3 TAMAMEN TAMAMLANDI — 8/8 test geçti.** Milvus Partition Key RAG + Neo4j GraphRAG pipeline eksiksiz çalışıyor. Faz 4 başlıyor.
 
 ## Aktif Çalışma Konusu
 
-Faz 3 başlangıcı — Milvus entegrasyonu ve bilgi bankası altyapısı.
+Faz 4 — WebRTC ses altyapısı ve OpenAI Realtime API.
 
 ## Açık Sorular / Belirsizlikler
 
-- LangGraph PostgreSQL checkpointer: geliştirmede in-memory yeterli, üretimde geçiş yapılacak (Faz 2'nin son küçük kalemi)
-- LiveKit self-hosted vs LiveKit Cloud: Faz 4 başlangıcında değerlendirilecek
-- Milvus koleksiyon schema'sı: per-tenant koleksiyon mu, tenant_id filtreli tek koleksiyon mu
+- LiveKit self-hosted vs LiveKit Cloud: docker-compose'a self-hosted eklemeyi tercih ediyoruz
+- OpenAI Realtime API fiyatlandırma: gpt-4o-realtime-preview ($0.06/dk.)
+- WebRTC NAT traversal: TURN sunucusu gerekiyor mu? (ilk aşamada STUN yeterli)
 
 ## Bir Sonraki Adım
 
-1. Faz 2 son: LangGraph PostgreSQL checkpointer entegrasyonu (opsiyonel, üretim öncesi)  
-2. Faz 3: Milvus entegrasyonu — `knowledge_search` tool gerçek implementasyonu  
-3. Faz 3: Neo4j GraphRAG subgraph
+1. LiveKit self-hosted → docker-compose.yml'a ekle
+2. WebRTC signaling endpoint (FastAPI + LiveKit SDK)
+3. OpenAI Realtime API ses pipeline
+4. Frontend ses UI bileşeni
 
 ## Son Oturum Özeti
 
-Faz 2 tamamlandı — **19/19 test, 0 başarısız, 0 atlandı, gerçek LLM yanıtı doğrulandı:**
-- `supervisor.py`: `ChatOpenAI(openai_api_key=settings.cf_aig_token)` — CF Unified Billing çalışıyor
-- `chat.py`: `result["messages"]` dict erişimi (AddableValuesDict)
-- `config.py`: `llm_sdk_placeholder_key` kaldırıldı
-- `supervisor.py` prompt: `__end__` seçeneği kaldırıldı, her mesaj bir ajana yönlendiriliyor (selamlaşma → knowledge_agent)
-- LLM yanıtı: "Merhaba! Size nasıl yardımcı olabilirim?"
+Faz 3 tamamen kapandı — **8/8 test, 0 başarısız:**
+- Neo4j şifresi düzeltildi: `.env`'den `NEO4J_PASSWORD=35JWXFD3BwVF7ejTu8EcNmw`
+- `graph_ingestion.py`: entity extraction (LLM JSON mode) + Chunk/Entity/MENTIONS yazma + silme
+- `ingestion.py` race condition düzeltildi: Neo4j graph yazma ÖNCE → PG `indexed` SONRA
+- Chat URL düzeltildi: `/api/v1/chat/` → `/api/v1/agents/{membro_id}/chat`
+- GraphRAG chat yanıtı: "Acme Şirketi'nin iade politikası, satın alma tarihinden itibaren 30 gün..."
+- Chunk silme: DELETE sonrası Neo4j tam temizlendi (0 chunk kaldı)

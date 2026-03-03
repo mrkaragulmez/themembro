@@ -1,5 +1,7 @@
 # backend/app/api/v1/chat.py
 # Faz 2 — Ajan Chat Endpoint'leri
+# Faz 2 güncel: Graf artık app.state.graph üzerinden erişilir;
+# startup'ta PostgreSQL checkpointer ile derlendiğinden burada derleme yok.
 #
 # POST /api/v1/agents/{membro_id}/chat      → tek yanıt (JSON)
 # POST /api/v1/agents/{membro_id}/chat/stream → SSE akışı
@@ -14,9 +16,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.agents.supervisor import compile_graph
 from app.agents.state import MembroState
-from app.core.config import settings
 from langchain_core.messages import HumanMessage
 
 log = structlog.get_logger()
@@ -37,11 +37,6 @@ class ChatResponse(BaseModel):
     turn_count: int
 
 
-# ─── Grafik (uygulama genelinde tek derleme) ────────────────────────────────
-# Geliştirme: in-memory checkpointer
-# Üretim: langgraph-checkpoint-postgres geçilecek (Faz 2 sonunda)
-_graph = compile_graph()
-
 
 # ─── POST /agents/{membro_id}/chat ──────────────────────────────────────────
 
@@ -56,6 +51,9 @@ async def chat(
     tenant_id: str | None = getattr(request.state, "tenant_id", None)
     if not tenant_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="tenant_id bulunamadı")
+
+    # Graf startup'ında PG checkpointer ile derlendi (bkz. main.py lifespan)
+    graph = request.app.state.graph
 
     conversation_id = body.conversation_id or str(uuid.uuid4())
 
@@ -76,7 +74,7 @@ async def chat(
     )
 
     try:
-        result: MembroState = await _graph.ainvoke(initial_state, config=config)  # type: ignore
+        result: MembroState = await graph.ainvoke(initial_state, config=config)  # type: ignore
     except Exception as exc:
         log.error("chat.invoke_error", error=str(exc))
         raise HTTPException(status_code=500, detail=f"Ajan hatası: {exc}") from exc
@@ -121,11 +119,14 @@ async def chat_stream(
 
     config = {"configurable": {"thread_id": conversation_id}}
 
+    # Graf startup'ında PG checkpointer ile derlendi (bkz. main.py lifespan)
+    graph = request.app.state.graph
+
     async def event_generator():
         # Konuşma başlangıç metaverisi
         yield f"data: {json.dumps({'conversation_id': conversation_id, 'type': 'start'})}\n\n"
         try:
-            async for chunk in _graph.astream(initial_state, config=config):
+            async for chunk in graph.astream(initial_state, config=config):
                 # chunk: {node_name: state_update}
                 for node_name, update in chunk.items():
                     if isinstance(update, dict) and "messages" in update:

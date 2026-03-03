@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Neo4j
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "membro_dev_pass"
+    neo4j_password: str = "35JWXFD3BwVF7ejTu8EcNmw"
 
     # Milvus
     milvus_uri: str = "http://localhost:19530"
@@ -52,6 +52,14 @@ class Settings(BaseSettings):
             f"https://gateway.ai.cloudflare.com/v1"
             f"/{self.cf_account_id}/{self.cf_gateway_id}"
         )
+
+    @property
+    def pg_checkpoint_url(self) -> str:
+        """LangGraph PostgreSQL checkpointer için psycopg v3 uyumlu bağlantı URL'i.
+
+        asyncpg driver prefix'i çıkarılır; psycopg standart postgresql:// şeması kullanır.
+        """
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql://")
 
 
 
