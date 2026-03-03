@@ -154,3 +154,42 @@ class Eventlog(Base):
     request_id:  Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     extra:       Mapped[dict | None]    = mapped_column("metadata", JSONB)
     created_at:  Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+# ─── MO_Meetings ───────────────────────────────────────────────
+# Faz 4 — LiveKit WebRTC sesli toplantı oturumları
+
+class Meeting(Base):
+    __tablename__ = "MO_Meetings"
+
+    id:          Mapped[uuid.UUID]    = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id:   Mapped[uuid.UUID]    = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    membro_id:   Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Membros.id", ondelete="SET NULL"), nullable=True)
+    # LiveKit room adı — her toplantıya özgü; format: {tenant_id}_{membro_id}_{uuid}
+    room_name:   Mapped[str]          = mapped_column(String(255), nullable=False, unique=True, index=True)
+    started_by:  Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Users.id", ondelete="SET NULL"), nullable=True)
+    # active | ended | failed
+    status:      Mapped[str]          = mapped_column(String(32), nullable=False, default="active")
+    # Toplantı sonrası LangGraph Supervisor tarafından oluşturulan özet
+    summary:     Mapped[str | None]   = mapped_column(Text, nullable=True)
+    started_at:  Mapped[datetime]     = mapped_column(DateTime(timezone=True), server_default=func.now())
+    ended_at:    Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    transcripts: Mapped[list["MeetingTranscript"]] = relationship(back_populates="meeting", cascade="all, delete-orphan")
+
+
+# ─── MO_MeetingTranscripts ─────────────────────────────────────
+# Faz 4 — Sesli toplantı transcript satırları (konuşan + metin)
+
+class MeetingTranscript(Base):
+    __tablename__ = "MO_MeetingTranscripts"
+
+    id:          Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id:   Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    meeting_id:  Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Meetings.id", ondelete="CASCADE"), nullable=False, index=True)
+    # "user" veya membro_id string (sesli ajan kimliği)
+    speaker:     Mapped[str]       = mapped_column(String(255), nullable=False)
+    text:        Mapped[str]       = mapped_column(Text, nullable=False)
+    created_at:  Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    meeting: Mapped["Meeting"] = relationship(back_populates="transcripts")

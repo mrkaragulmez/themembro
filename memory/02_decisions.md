@@ -91,3 +91,27 @@ _Yeni kararlar bu dosyanın altına eklenir._
 **Karar:** `ChatOpenAI(openai_api_key=settings.cf_aig_token)` ile LangChain SDK'ya CF token verilir. SDK bu değeri `Authorization: Bearer {token}` header'ı olarak gönderir; CF Gateway bu header'ı kendi auth mekanizması olarak kabul eder ve provider key'i CF Vault'tan alır.
 **Gerekçe:** CF Unified Billing kullanılıyor — provider API key'leri uygulama kodunda/env'de olmaz, CF Dashboard'da saklanır. SDK validation'ı bypass etmek için önceden `llm_sdk_placeholder_key="cf-managed"` kullanılıyordu ancak bu gerçek Bearer token yerine `cf-managed` gönderiyordu. Doğrudan `cf_aig_token` vermek hem auth header'ı hem de SDK validasyonunu tek hamlede çözdü.
 **Alternatifler değerlendirildi:** `default_headers` ile `cf-aig-authorization` manuel ekle (reddedildi: SDK `Authorization` header'ını ayrıca `cf-managed` key ile gönderiyordu, çakışma oluyordu), provider key'i `.env`'e koy (reddedildi: Unified Billing amacına aykırı).
+
+---
+
+## [2026-03-03] Faz 4 — LiveKit: Self-Hosted (docker-compose) tercih edildi
+
+**Karar:** LiveKit Cloud yerine `livekit/livekit-server:v1.7` imajı docker-compose servis olarak eklendi.
+**Gerekçe:** Local geliştirmede dış servise bağımlılık ortadan kalkar; `devkey/devsecret123456` ile zero-config başlatılır. Production'da LiveKit Cloud veya self-hosted Kubernetes'e geçiş sadece `LIVEKIT_URL/API_KEY/API_SECRET` env değişkenleri ile yapılır — kod değişikliği gerekmez.
+**Alternatifler değerlendirildi:** LiveKit Cloud (reddedildi: free tier limit, local geliştirme için gereksiz), Daily.co (reddedildi: Python SDK eksik, LiveKit'in LangGraph/MCP entegrasyonu daha güçlü).
+
+---
+
+## [2026-03-03] Faz 4 — Ses Pipeline: OpenAI Realtime API (Native Audio)
+
+**Karar:** STT→LLM→TTS zinciri yerine OpenAI Realtime API (`gpt-4o-realtime-preview`) kullanılır; LiveKit Agents framework RealtimeModel olarak yapılandırılır.
+**Gerekçe:** Geleneksel zincir 2–4 saniyelik gecikme yaratır. Realtime API native audio modunda ~300ms TTFS sağlar; konuşma doğallığı korunur. Silero VAD client-side interruption handling için ayrıca eklendi.
+**Alternatifler değerlendirildi:** Deepgram STT + Anthropic LLM + ElevenLabs TTS (reddedildi: driver sayısı artıyor, gecikme birikimi), Groq Whisper STT (reddedildi: Realtime API var iken gereksiz ara adım).
+
+---
+
+## [2026-03-03] Faz 4 — Voice Worker Dispatch: Hata Toleranslı Mimari
+
+**Karar:** `POST /meetings/` endpoint'i LiveKit dispatch başarısız olsa bile 201 döner; token ve meeting_id her zaman oluşturulur.
+**Gerekçe:** Voice Worker çalışmıyor olsa (geliştirme, restart) toplantı API'si kırılmasın. Worker dispatch ayrı `try/except` bloğuna alındı, log uyarısı bırakır. Test ortamında LiveKit olmadan 10/10 test geçmesi bu kararın doğruluğunu kanıtladı.
+**Alternatifler değerlendirildi:** Dispatch başarısız olursa 503 dön (reddedildi: test ve geliştirme deneyimini bozar), worker'ı API içinde doğrudan asyncio task olarak çalıştır (reddedildi: API process'ini kirletir, ayrı servis mimarisine aykırı).

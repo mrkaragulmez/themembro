@@ -1,0 +1,30 @@
+# infra/livekit/livekit.yaml
+# Faz 4 — LiveKit sunucu konfigürasyonu (self-hosted, local geliştirme)
+# Production'da environment variable injection veya Vault entegrasyonu yapılmalı
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  # Local geliştirme: external IP tespit gereksiz
+  use_external_ip: false
+  # STUN sunucusu (local LAN için, NAT traversal bu aşamada devre dışı)
+  stun_servers:
+    - stun:stun.l.google.com:19302
+
+# API anahtar/gizli çiftleri: key -> secret formatında
+# Production'da güçlü random değerler kullanınız (min 32 karakter zorunlu)
+keys:
+  devkey: devsecretkey-membro-local-dev001
+
+room:
+  # Ajan dispatch için oda otomatik yaratılsın
+  auto_create: true
+  # Toplantı süresi limiti: 2 saat (saniye)
+  max_participants: 50
+
+logging:
+  json: false
+  level: info

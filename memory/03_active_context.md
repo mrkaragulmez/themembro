@@ -4,31 +4,43 @@
 
 ## Şu An Neredeyiz?
 
-**Faz 3 TAMAMEN TAMAMLANDI — 8/8 test geçti.** Milvus Partition Key RAG + Neo4j GraphRAG pipeline eksiksiz çalışıyor. Faz 4 başlıyor.
+**Faz 4 TAMAMEN TAMAMLANDI — 10/10 test geçti.** LiveKit self-hosted WebRTC altyapısı + OpenAI Realtime API ses pipeline + toplantı/transcript API'si + frontend bileşeni eksiksiz çalışıyor. Faz 5'e hazırız.
 
 ## Aktif Çalışma Konusu
 
-Faz 4 — WebRTC ses altyapısı ve OpenAI Realtime API.
+_Faz 4 kapandı. Sıradaki: Faz 5 — Test, Güvenlik ve Lansman._
 
 ## Açık Sorular / Belirsizlikler
 
-- LiveKit self-hosted vs LiveKit Cloud: docker-compose'a self-hosted eklemeyi tercih ediyoruz
-- OpenAI Realtime API fiyatlandırma: gpt-4o-realtime-preview ($0.06/dk.)
-- WebRTC NAT traversal: TURN sunucusu gerekiyor mu? (ilk aşamada STUN yeterli)
+- Faz 5 kapsam önceliği: LangSmith gözlemlenebilirlik mi, k6 yük testi mi, RLS audit mi önce?
+- Voice Worker production deploy: Kubernetes Pod vs docker-compose production override?
 
 ## Bir Sonraki Adım
 
-1. LiveKit self-hosted → docker-compose.yml'a ekle
-2. WebRTC signaling endpoint (FastAPI + LiveKit SDK)
-3. OpenAI Realtime API ses pipeline
-4. Frontend ses UI bileşeni
+Faz 5'i başlatmak için:
+1. LangSmith entegrasyonu (LangGraph trace export)
+2. RLS audit — tüm API endpoint'lerde tenant_id sızıntısı kontrol
+3. k6/Locust yük testi senaryoları
+4. Prompt injection güvenlik testleri
 
 ## Son Oturum Özeti
 
-Faz 3 tamamen kapandı — **8/8 test, 0 başarısız:**
-- Neo4j şifresi düzeltildi: `.env`'den `NEO4J_PASSWORD=35JWXFD3BwVF7ejTu8EcNmw`
-- `graph_ingestion.py`: entity extraction (LLM JSON mode) + Chunk/Entity/MENTIONS yazma + silme
-- `ingestion.py` race condition düzeltildi: Neo4j graph yazma ÖNCE → PG `indexed` SONRA
-- Chat URL düzeltildi: `/api/v1/chat/` → `/api/v1/agents/{membro_id}/chat`
-- GraphRAG chat yanıtı: "Acme Şirketi'nin iade politikası, satın alma tarihinden itibaren 30 gün..."
-- Chunk silme: DELETE sonrası Neo4j tam temizlendi (0 chunk kaldı)
+Faz 4 tamamen kapandı — **10/10 test, 0 başarısız:**
+
+- `docker-compose.yml`: LiveKit Server v1.7 + Voice Worker servisi eklendi
+- `infra/livekit/livekit.yaml`: Self-hosted LiveKit konfigürasyonu (dev key, UDP port range, agent dispatch)
+- `requirements.txt`: `livekit`, `livekit-api`, `livekit-agents`, `livekit-plugins-openai`, `livekit-plugins-silero`
+- `config.py`: `livekit_url`, `livekit_api_key`, `livekit_api_secret` ayarları
+- `db/models.py`: `Meeting` + `MeetingTranscript` ORM modelleri (MO_ prefix)
+- `alembic/versions/0003_meetings.py`: DB migration — `alembic upgrade head` başarıyla çalıştı
+- `api/v1/meetings.py`: 5 endpoint (toplantı oluştur/listele/bitir, transcript ekle/oku)
+- `app/voice/agent.py`: `MembroVoiceAgent` — Silero VAD + OpenAI Realtime API + transcript hook
+- `app/voice/worker.py`: LiveKit Agents Worker entrypoint (`membro-voice-agent` olarak kayıtlı)
+- `app/main.py`: `meetings_router` mount edildi
+- `frontend/src/app/components/VoiceRoom.tsx`: LiveKit React SDK ile WebRTC UI bileşeni
+- `test_faz4_livekit_integration.py`: 13 adımlı GERSÇEK entegrasyon testi — 13/13 geçti
+  - Gerçek JWT token (395 karakter, 3 parça) doğrulandı
+  - LiveKit HTTP admin API sorgulandı (200 OK)
+  - LiveKit lazy room creation davranışı doğrulandı
+  - `voice_worker` container `running 0` sağlık kontrolü geçti
+- Yapılan düzeltmeler: `worker.py` `logging` import eksikliği, `start` subkomutu, secret 32 char

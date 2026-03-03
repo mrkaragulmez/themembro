@@ -1,6 +1,6 @@
 # Proje Durumu
 
-**Son güncelleme:** 2026-03-03 (Faz 3 tamamen tamamlandı)
+**Son güncelleme:** 2026-03-03 (Faz 4 tamamen tamamlandı)
 
 ## Faz Durumları
 
@@ -9,7 +9,7 @@
 | Faz 1 | SaaS Temelleri ve İzolasyon | `TAMAMLANDI` | 21/21 test geçti |
 | Faz 2 | AI İstek Yönetimi ve Ajan Orkestrasyonu | `TAMAMLANDI` | 19/19 test geçti; gerçek LLM yanıtı doğrulandı |
 | Faz 3 | Bilgi Bankası ve GraphRAG | `TAMAMLANDI` | 8/8 test geçti; Milvus RAG + Neo4j GraphRAG + chunk silme doğrulandı |
-| Faz 4 | Realtime Voice ve Toplantı Altyapısı | `BEKLEMEDE` | WebRTC, LiveKit/Daily, OpenAI Realtime API |
+| Faz 4 | Realtime Voice ve Toplantı Altyapısı | `TAMAMLANDI` | 10/10 test geçti; LiveKit + OpenAI Realtime API |
 | Faz 5 | Test, Güvenlik ve Lansman | `BEKLEMEDE` | LangSmith, k6/Locust, prompt injection, RLS audit |
 
 ## Tamamlanan Görevler
@@ -55,13 +55,25 @@
 - [x] **Faz 3 — Neo4j şifresi düzeltildi** — `.env`'den `NEO4J_PASSWORD` okunuyor
 - [x] **Faz 3 — GraphRAG E2E testler — 8/8 başarılı** (Neo4j entity/chunk/ilişki + chat RAG + chunk silme)
 
+- [x] **Faz 4 — `docker-compose.yml`** — `livekit` (v1.7) + `voice_worker` servisleri eklendi
+- [x] **Faz 4 — `infra/livekit/livekit.yaml`** — self-hosted LiveKit sunucu konfigürasyon dosyası
+- [x] **Faz 4 — `requirements.txt`** — livekit, livekit-api, livekit-agents, livekit-plugins-openai/silero eklendi
+- [x] **Faz 4 — `core/config.py`** — livekit_url, livekit_api_key, livekit_api_secret ayarları
+- [x] **Faz 4 — `db/models.py`** — Meeting + MeetingTranscript ORM modelleri
+- [x] **Faz 4 — `alembic/versions/0003_meetings.py`** — MO_Meetings + MO_MeetingTranscripts tablosu
+- [x] **Faz 4 — `api/v1/meetings.py`** — POST/GET toplantı, POST/GET transcript, toplantı bitirme
+- [x] **Faz 4 — `app/voice/agent.py`** — MembroVoiceAgent (Silero VAD + OpenAI Realtime + transcript hook)
+- [x] **Faz 4 — `app/voice/worker.py`** — LiveKit Agents Worker giriş noktası (`membro-voice-agent`); `start` subkomutu + `logging` import düzeltildi
+- [x] **Faz 4 — `app/main.py`** — meetings router mount edildi
+- [x] **Faz 4 — `frontend/src/app/components/VoiceRoom.tsx`** — LiveKit React SDK toplantı UI bileşeni
+- [x] **Faz 4 — E2E testler — 10/10 başarılı** (toplantı oluşturma, listing, transcript, bitirme, 409)
+- [x] **Faz 4 — Tam entegrasyon testi — 13/13 başarılı** (LiveKit HTTP admin API, gerçek JWT doğrulama, worker container sağlık, lazy room creation)
+- [x] **Faz 4 — `infra/livekit/livekit.yaml` + `docker-compose.yml`** — secret 32 karaktere çıkarıldı, `voice_worker` komutu `start` subkomutuyla düzeltildi
+
 ## Devam Eden Görevler
 
-- [ ] Faz 4: LiveKit servisini docker-compose.yml'a ekle
-- [ ] Faz 4: WebRTC signaling endpoint (FastAPI + LiveKit SDK)
-- [ ] Faz 4: OpenAI Realtime API ses pipeline
+_Faz 4 tamamen tamamlandı. Faz 5 bekleniyor._
 
 ## Bekleyen Görevler
 
-- [ ] Faz 4: Frontend ses UI bileşeni
 - [ ] Faz 5: LangSmith gözlemlenebilirlik, k6 yük testi, RLS audit

@@ -53,6 +53,11 @@ class Settings(BaseSettings):
             f"/{self.cf_account_id}/{self.cf_gateway_id}"
         )
 
+    # ─── Faz 4: LiveKit WebRTC Ses Altyapısı ──────────────────────
+    livekit_url: str = "ws://localhost:7880"
+    livekit_api_key: str = "devkey"
+    livekit_api_secret: str = "devsecretkey-membro-local-dev001"
+
     @property
     def pg_checkpoint_url(self) -> str:
         """LangGraph PostgreSQL checkpointer için psycopg v3 uyumlu bağlantı URL'i.

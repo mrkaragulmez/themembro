@@ -132,6 +132,48 @@ services:
       - backend
     command: npm run dev
 
+  # ─── LiveKit Sunucusu (WebRTC) ────────────────────────────────
+  livekit:
+    image: livekit/livekit-server:v1.7
+    container_name: membro_livekit
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"    # HTTP / WebSocket (signaling)
+      - "7881:7881"    # RTC over TCP
+      - "50000-50100:50000-50100/udp"  # RTC UDP port range
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7880 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ─── Membro Voice Worker (LiveKit Agents) ─────────────────────
+  voice_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: membro_voice_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://membro_user:${POSTGRES_PASSWORD:-membro_dev_pass}@postgres:5432/membro_db
+      NEO4J_URI: bolt://neo4j:7687
+      MILVUS_URI: http://milvus:19530
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecretkey-membro-local-dev001}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+    command: python -m app.voice.worker start
+
   # ─── Nginx ─────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
