@@ -55,16 +55,28 @@ async def chat(
     # Graf startup'ında PG checkpointer ile derlendi (bkz. main.py lifespan)
     graph = request.app.state.graph
 
+    # Faz 5: Input uzunluk limiti — prompt injection yüzey azaltma
+    from app.core.config import settings as _s
+    message_text = body.message[: _s.input_max_length]
+
     conversation_id = body.conversation_id or str(uuid.uuid4())
 
     initial_state = MembroState(
-        messages=[HumanMessage(content=body.message)],
+        messages=[HumanMessage(content=message_text)],
         tenant_id=tenant_id,
         membro_id=membro_id,
         conversation_id=conversation_id,
     )
 
-    config = {"configurable": {"thread_id": conversation_id}}
+    config = {
+        "configurable": {"thread_id": conversation_id},
+        # Faz 5: LangSmith trace metadata — tenant + membro bazlı izleme
+        "metadata": {
+            "tenant_id":    tenant_id,
+            "membro_id":    membro_id,
+            "session_type": "chat",
+        },
+    }
 
     log.info(
         "chat.invoke",

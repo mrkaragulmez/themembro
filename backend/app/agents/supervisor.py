@@ -16,8 +16,17 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel
 
+import os
+
 from app.agents.state import MembroState, AgentName
 from app.core.config import settings
+
+# ─── LangSmith Tracing ───────────────────────────────────────────────────────────────────────────────
+if settings.langsmith_tracing and settings.langsmith_api_key:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    os.environ.setdefault("LANGCHAIN_API_KEY", settings.langsmith_api_key)
+    os.environ.setdefault("LANGCHAIN_PROJECT", settings.langsmith_project)
 
 log = structlog.get_logger()
 

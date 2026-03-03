@@ -66,16 +66,31 @@ def create_refresh_token(payload: TokenPayload) -> str:
     return jwt.encode(data, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def decode_token(token: str) -> TokenPayload:
-    """Token'ı doğrular ve payload'ı döner. Geçersizse JWTError fırlatır."""
+def decode_token(token: str, expected_type: str = "access") -> TokenPayload:
+    """Token'ı doğrular, tipini kontrol eder ve payload'ı döner.
+
+    expected_type: "access" | "refresh"
+    Tip uyumsuzluğunda JWTError fırlatılır — refresh token'ın
+    API erişimi için kullanılması engellenir.
+    """
     raw = jwt.decode(
         token,
         settings.jwt_secret,
         algorithms=[settings.jwt_algorithm],
     )
+    token_type = raw.get("type", "access")
+    if token_type != expected_type:
+        raise JWTError(
+            f"Token tip hatası: beklenen='{expected_type}', gelen='{token_type}'"
+        )
     return TokenPayload(
         sub=raw["sub"],
         tenant_id=raw["tenant_id"],
         tenant_slug=raw["tenant_slug"],
         role=raw["role"],
     )
+
+
+def decode_refresh_token(token: str) -> TokenPayload:
+    """Refresh token'a özgü decode; access token ile karıştırılamaz."""
+    return decode_token(token, expected_type="refresh")

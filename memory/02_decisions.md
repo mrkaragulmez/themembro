@@ -4,7 +4,23 @@ Her önemli karar tarih ve gerekçesiyle buraya kaydedilir. Bir karar değişirs
 
 ---
 
-## [2026-03-02] Multi-Tenant Strateji: Shared DB + RLS
+## [2026-03-04] Pytest asyncio Loop Scope: Session
+
+**Karar:** `pyproject.toml`'a `asyncio_default_test_loop_scope = "session"` ve `asyncio_default_fixture_loop_scope = "session"` eklendi.
+**Gerekçe:** SQLAlchemy `create_async_engine` modül seviyesinde oluşturuluyor; asyncpg pool'un bağlantıları tek bir event loop'a bağlı. Her test farklı loop kullansaydı "Future attached to different loop" RuntimeError'ı oluşuyordu.
+**Alternatifler değerlendirildi:** function-scope (loop karışması — reddedildi), engine'i fixture içinde oluşturma (yüksek refactor maliyeti — reddedildi), session loop (seçildi).
+
+---
+
+## [2026-03-04] Auth Testi Tasarımı: X-Tenant-Slug Olmadan
+
+**Karar:** JWT tip ve auth testlerinde `X-Tenant-Slug` header gönderilmiyor.
+**Gerekçe:** Tenant middleware önce çalışıyor ve "tenant-a" test DB'de olmadığı için 404 dönüyor, auth middleware'e ulaşılmıyor. Auth izolasyon testi için tenant çözümlemesi gereksiz bağımlılık.
+**Alternatifler değerlendirildi:** Test DB'ye tenant seed (karmaşık setup — reddedildi), X-Tenant-Slug kaldırılması (seçildi — tenant MW slug yoksa atlıyor).
+
+---
+
+
 
 **Karar:** Tüm tenant'lar tek veritabanında, row-level security ile izole edilecek.
 **Gerekçe:** Operasyonel basitlik. Ayrı DB veya şema mimarilerine göre bakım maliyeti çok daha düşük.
@@ -40,9 +56,21 @@ Her önemli karar tarih ve gerekçesiyle buraya kaydedilir. Bir karar değişirs
 **Alternatifler değerlendirildi:** Prefix'siz (reddedildi: isim çakışma riski), ayrı error schema (reddedildi: operasyonel karmaşıklık), Sentry-only (reddedildi: tenant bazlı sorgu yapılamıyor).
 **Özel Not:** MO_Eventlog için RLS tenant_id NULL satırlara (sistem hataları) izin verir; bu satırları yalnızca Super Admin görebilir.
 
+## [2026-03-03] Faz 5 — Rate Limiting: slowapi (Tenant Bazlı Key)
+
+**Karar:** `slowapi` ile FastAPI middleware katmanında rate limiting uygulanır. Key fonksiyonu: `tenant_id` varsa tenant bazlı, yoksa IP.
+**Gerekce:** Cloudflare AI Gateway'in kendi rate limiting'i var ama API katmanında da limit gerekli. Tek bir kötü tenant tüm sistemi yavaşlatmamalı.
+**Alternatifler değerlendirildi:** Nginx rate limit (reddedildi: tenant bazlı yapamaz), sadece CF limiti (reddedildi: API layer korumsuz kalır).
+
 ---
 
-_Yeni kararlar bu dosyanın altına eklenir._
+## [2026-03-03] Faz 5 — Token Revocation: Bu Fazda Yok
+
+**Karar:** Redis bloklist tabanlı token revocation bu fazda eklenmedi.
+**Gerekce:** JWT tip doğrulama (refresh → access kullanımı engeli) bug sınıfını kapatıyor. Revocation listesi Redis bağımlılığı getiriyor ve Faz 1–5 kapsamı dışında. Faz 6+ için not düşüldü.
+**Alternatifler değerlendirildi:** Redis blocklist (ileriye alındı), kısa JWT TTL (mevcut 60dk acceptable).
+
+---
 
 ---
 

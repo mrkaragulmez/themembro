@@ -5,7 +5,7 @@ import structlog
 from fastapi import Request, Response
 from jose import JWTError
 
-from app.core.security import decode_token
+from app.core.security import decode_token, decode_refresh_token
 
 log = structlog.get_logger()
 
@@ -48,7 +48,13 @@ async def auth_middleware(request: Request, call_next) -> Response:
 
     if token:
         try:
-            payload = decode_token(token)
+            # Refresh endpoint yalnızca refresh token kabul eder; diğerleri access token bekler
+            is_refresh_path = request.url.path == "/api/v1/auth/refresh"
+            payload = (
+                decode_refresh_token(token)
+                if is_refresh_path
+                else decode_token(token, expected_type="access")
+            )
             request.state.user_id   = payload.sub
             request.state.user_role = payload.role
             # tenant_id JWT'den de gelebilir; middleware zaten header'dan set etti,

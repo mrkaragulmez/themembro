@@ -1,6 +1,6 @@
 # Proje Durumu
 
-**Son güncelleme:** 2026-03-03 (Faz 4 tamamen tamamlandı)
+**Son güncelleme:** 2026-03-04 (Faz 5 testleri tamamlandı)
 
 ## Faz Durumları
 
@@ -10,7 +10,7 @@
 | Faz 2 | AI İstek Yönetimi ve Ajan Orkestrasyonu | `TAMAMLANDI` | 19/19 test geçti; gerçek LLM yanıtı doğrulandı |
 | Faz 3 | Bilgi Bankası ve GraphRAG | `TAMAMLANDI` | 8/8 test geçti; Milvus RAG + Neo4j GraphRAG + chunk silme doğrulandı |
 | Faz 4 | Realtime Voice ve Toplantı Altyapısı | `TAMAMLANDI` | 10/10 test geçti; LiveKit + OpenAI Realtime API |
-| Faz 5 | Test, Güvenlik ve Lansman | `BEKLEMEDE` | LangSmith, k6/Locust, prompt injection, RLS audit |
+| Faz 5 | Test, Güvenlik ve Lansman | `DEVAM EDİYOR` | 14/14 test geçti (6 atlandı — Docker içi izolasyon), Locust + LangSmith kaldı |
 
 ## Tamamlanan Görevler
 
@@ -69,11 +69,41 @@
 - [x] **Faz 4 — E2E testler — 10/10 başarılı** (toplantı oluşturma, listing, transcript, bitirme, 409)
 - [x] **Faz 4 — Tam entegrasyon testi — 13/13 başarılı** (LiveKit HTTP admin API, gerçek JWT doğrulama, worker container sağlık, lazy room creation)
 - [x] **Faz 4 — `infra/livekit/livekit.yaml` + `docker-compose.yml`** — secret 32 karaktere çıkarıldı, `voice_worker` komutu `start` subkomutuyla düzeltildi
+- [x] **Faz 5 — `requirements.txt`** — `langsmith`, `slowapi`, `pytest`, `pytest-asyncio`, `pytest-cov`, `locust` eklendi
+- [x] **Faz 5 — `config.py`** — `langsmith_api_key/project/tracing`, `rate_limit_per_minute`, `input_max_length`
+- [x] **Faz 5 — `core/security.py`** — `decode_token(expected_type)` + `decode_refresh_token()` token tip izolasyonu
+- [x] **Faz 5 — `middleware/auth.py`** — refresh path'te `decode_refresh_token` kullanımı
+- [x] **Faz 5 — `agents/supervisor.py`** — LangSmith `LANGCHAIN_TRACING_V2` env otomatik ayarı
+- [x] **Faz 5 — `api/v1/chat.py`** — `input_max_length` kırpma + LangSmith trace metadata
+- [x] **Faz 5 — `app/main.py`** — `configure_logging()` startup'ta + `slowapi` rate limiter + `SlowAPIMiddleware`
+- [x] **Faz 5 — `core/logging_setup.py`** — structlog JSON/console renderer konfigürasyon dosyası
+- [x] **Faz 5 — `pyproject.toml`** — pytest asyncio_mode=auto, testpaths, coverage ayarları
+- [x] **Faz 5 — `tests/conftest.py`** — Tenant A/B JWT fixture + async ASGI test client
+- [x] **Faz 5 — `tests/test_security.py`** — token tip, RLS cross-tenant, input limit, health testleri
+- [x] **Faz 5 — `tests/test_isolation.py`** — Milvus/Neo4j/PostgreSQL RLS izolasyon testleri
+- [x] **Faz 5 — `tests/load/locustfile.py`** — ChatUser + MeetingUser + KnowledgeUser + SLA hook
+- [x] **Faz 5 — `tests/load/k6_script.js`** — k6 100 VU ramp-up, P95 < 500ms SLA
+- [x] **Faz 5 — `.env.example` alignment** — 23/23 config.py field'ı eşleşti; Faz 4 + Faz 5 key'leri eklendi (`DATABASE_URL`, `LIVEKIT_*`, `LANGSMITH_*`, `RATE_LIMIT_PER_MINUTE`, `INPUT_MAX_LENGTH`); yanıltıcı `CF_AI_GATEWAY_BASE_URL` kaldırıldı
+- [x] **Faz 5 — `tests/test_security.py` — 8/8 birim testi geçti** (JWT tip izolasyonu, tenant ayrımı, token tampering, boş token)
+- [x] **Faz 5 — `tests/test_api_security.py`** — RLS/input limit HTTP testleri (Docker Compose gerektirir)
+- [x] **Faz 5 — Test suite çalıştırıldı: 14 geçti, 6 atlandı, 0 başarısız**
+  - `test_security.py`: 8/8 JWT birim testi ✓
+  - `test_api_security.py`: 6/6 HTTP güvenlik testi ✓
+  - `test_isolation.py`: 6/6 atlandı (Milvus/Neo4j/PG Docker içi erişim gerektirir)
+- [x] **Faz 5 — Bug fix seti:**
+  - `psycopg[binary]` + `greenlet` + `langgraph-checkpoint-postgres` kuruldu
+  - `.env`'e `DATABASE_URL` eklendi (doğru şifre)
+  - `conftest.py`: `python-dotenv` ile `.env` sync + `asyncio_default_test_loop_scope=session`
+  - `test_api_security.py`: tenant middleware bypass eden auth testleri düzeltildi (X-Tenant-Slug kaldırıldı)
 
 ## Devam Eden Görevler
 
-_Faz 4 tamamen tamamlandı. Faz 5 bekleniyor._
+- [ ] Locust yük testi (50 VU, 2 dakika)
+- [ ] LangSmith'te trace doğrulama (opsiyonel — `.env`'e API key ekle)
+- [ ] Faz 5: `TAMAMLANDI` olarak işaretle
 
 ## Bekleyen Görevler
 
-- [ ] Faz 5: LangSmith gözlemlenebilirlik, k6 yük testi, RLS audit
+- [ ] Faz 5: Lansman kontrol listesi tam dolumu
+- [ ] Wildcard SSL sertifikası otomatik yenileme testi
+- [ ] DB backup/restore prosedürü testi

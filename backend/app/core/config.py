@@ -58,6 +58,15 @@ class Settings(BaseSettings):
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "devsecretkey-membro-local-dev001"
 
+    # ─── Faz 5: Gözlemlenebilirlik ────────────────────────────────
+    langsmith_api_key: str = ""
+    langsmith_project: str = "membro-production"
+    langsmith_tracing: bool = False
+
+    # ─── Faz 5: Güvenlik Limitleri ────────────────────────────────
+    rate_limit_per_minute: int = 60   # tenant bazlı varsayılan
+    input_max_length: int = 4000      # prompt injection yüzey azaltma
+
     @property
     def pg_checkpoint_url(self) -> str:
         """LangGraph PostgreSQL checkpointer için psycopg v3 uyumlu bağlantı URL'i.
