@@ -1,6 +1,6 @@
 # Proje Durumu
 
-**Son güncelleme:** 2026-03-04 (Faz 5 testleri tamamlandı)
+**Son güncelleme:** 2026-03-04 (Faz 6 tanımlandı)
 
 ## Faz Durumları
 
@@ -11,6 +11,7 @@
 | Faz 3 | Bilgi Bankası ve GraphRAG | `TAMAMLANDI` | 8/8 test geçti; Milvus RAG + Neo4j GraphRAG + chunk silme doğrulandı |
 | Faz 4 | Realtime Voice ve Toplantı Altyapısı | `TAMAMLANDI` | 10/10 test geçti; LiveKit + OpenAI Realtime API |
 | Faz 5 | Test, Güvenlik ve Lansman | `DEVAM EDİYOR` | 14/14 test geçti (6 atlandı — Docker içi izolasyon), Locust + LangSmith kaldı |
+| Faz 6 | Tenant Frontend Uygulaması | `PLANLANDI` | Doküman hazır; 2026 UX/UI araştırması tamamlandı — implementasyon başlamadı |
 
 ## Tamamlanan Görevler
 
@@ -78,6 +79,7 @@
 - [x] **Faz 5 — `app/main.py`** — `configure_logging()` startup'ta + `slowapi` rate limiter + `SlowAPIMiddleware`
 - [x] **Faz 5 — `core/logging_setup.py`** — structlog JSON/console renderer konfigürasyon dosyası
 - [x] **Faz 5 — `pyproject.toml`** — pytest asyncio_mode=auto, testpaths, coverage ayarları
+- [x] **Faz 6 — `docs/06_faz6_frontend_uygulama.md`** — 2026 UX/UI araştırması + tasarım sistemi + tüm sayfa/modal spesifikasyonları + component kataloğu + API haritası + 6 milestone
 - [x] **Faz 5 — `tests/conftest.py`** — Tenant A/B JWT fixture + async ASGI test client
 - [x] **Faz 5 — `tests/test_security.py`** — token tip, RLS cross-tenant, input limit, health testleri
 - [x] **Faz 5 — `tests/test_isolation.py`** — Milvus/Neo4j/PostgreSQL RLS izolasyon testleri

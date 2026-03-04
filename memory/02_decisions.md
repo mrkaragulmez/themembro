@@ -4,6 +4,14 @@ Her önemli karar tarih ve gerekçesiyle buraya kaydedilir. Bir karar değişirs
 
 ---
 
+## [2026-03-04] Faz 6 Frontend Design System Kararları
+
+**Karar:** Tenant frontend uygulaması için kendi design token sistemi (Tailwind CSS custom properties), Framer Motion animasyonlar, Zustand UI state, TanStack Query server state ve SSE-tabanlı chat stream seçildi. shadcn/ui kullanılmıyor.
+**Gerekçe:** 2026 UX/UI araştırması (Fuselab, JetBase, Smashing Magazine) dark mode + liquid glass + AI-first conversational UI trendlerini önce sıralıyor. shadcn/ui bileşen kırılganlığından kaçınmak ve design token kontrolünü tam elde tutmak için custom sistem tercih edildi. Spring-based animasyonlar (Framer Motion) liquid glass estetiğiyle uyumlu. SSE, FastAPI'nin native async streaming desteğiyle doğal uyum.
+**Alternatifler değerlendirildi:** shadcn/ui (token override maliyeti yüksek — reddedildi), WebSocket chat (SSE'den karmaşık, tek yönlü akış için gereksiz — reddedildi), Redux (Zustand'dan ağır, UI state için fazla — reddedildi).
+
+---
+
 ## [2026-03-04] Pytest asyncio Loop Scope: Session
 
 **Karar:** `pyproject.toml`'a `asyncio_default_test_loop_scope = "session"` ve `asyncio_default_fixture_loop_scope = "session"` eklendi.
