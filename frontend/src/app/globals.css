@@ -1,4 +1,124 @@
-// frontend/src/app/globals.css
-// Faz 1 — Tailwind CSS v4 import
+/* frontend/src/app/globals.css
+ * Faz 6 — Design Token Sistemi + Global Stiller
+ * Tailwind v4 @theme ile CSS custom property tabanlı token'lar
+ */
+
+/* ─── Font ────────────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap");
 
 @import "tailwindcss";
+
+/* ─── Tailwind v4 Theme ───────────────────────────────────────────────────── */
+@theme {
+  /* Font */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand Core */
+  --color-brand-navy:       #180942;
+  --color-brand-coral:      #FF6F80;
+  --color-brand-lime:       #D2F76C;
+  --color-brand-periwinkle: #655F9C;
+
+  /* Surface Scale */
+  --color-surface-0:   #FAF9FF;
+  --color-surface-50:  #F0ECFF;
+  --color-surface-100: #E4DEFF;
+  --color-surface-200: #CBC1F0;
+  --color-surface-800: #231263;
+  --color-surface-900: #180942;
+
+  /* Text Tokens */
+  --color-text-primary:           #180942;
+  --color-text-secondary:         #655F9C;
+  --color-text-tertiary:          #9590C4;
+  --color-text-on-dark:           #EAE6FF;
+  --color-text-on-dark-secondary: #A39DC6;
+
+  /* Semantic */
+  --color-success: #D2F76C;
+  --color-error:   #FF6F80;
+  --color-info:    #655F9C;
+  --color-warning: #F5C842;
+
+  /* Border */
+  --color-border-default: #E4DEFF;
+  --color-border-active:  #CBC1F0;
+}
+
+/* ─── CSS Custom Properties (runtime kullanım için) ─────────────────────── */
+:root {
+  --background: #FAF9FF;
+  --foreground: #180942;
+  color-scheme: light;
+}
+
+/* ─── Base Styles ────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBC1F0; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #9590C4; }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid #655F9C;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Animation Keyframes ────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────────── */
+.animate-fade-in  { animation: fade-in 0.2s ease-out; }
+.animate-slide-up { animation: slide-up 0.25s ease-out; }
+.animate-skeleton { animation: skeleton-pulse 1.5s ease-in-out infinite; }
+
+/* Glass surfaces */
+.glass {
+  backdrop-filter: blur(16px) saturate(180%);
+  background: rgba(250, 249, 255, 0.85);
+  border: 1px solid rgba(203, 193, 240, 0.4);
+}
+
+/* ─── prefers-reduced-motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

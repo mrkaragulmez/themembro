@@ -4,28 +4,93 @@
 
 ## Şu An Neredeyiz?
 
-**Faz 6 dokümanı tamamlandı.** `docs/06_faz6_frontend_uygulama.md` hazır.
-
-2026 UX/UI araştırması (Fuselab Creative + JetBase kaynaklı) yapıldı. Tasarım felsefesi, design token sistemi, tüm sayfalar ve bileşen kataloğu belgelendi. Faz 5'in opsiyonel adımları (Locust, LangSmith) hâlâ açık.
+**Faz 6.5 kısmen tamamlandı.** error.tsx + not-found.tsx, 5 loading.tsx skeleton, dashboard istatistik şeridi + kişisel selamlama + gerçek toplantı listesi, TopBar temizliği. TypeScript sıfır hata.
 
 ## Aktif Çalışma Konusu
 
-Faz 6 — Frontend uygulama planlaması tamamlandı, implementasyon başlamadı
+Faz 6.6 — Kalan MVP detayları
 
 ## Açık Sorular / Belirsizlikler
 
-- Faz 6.0 başlanmadan önce `frontend/package.json` Tailwind v4 + TanStack Query + Zustand + Framer Motion bağımlılıkları güncellenecek
-- `tailwind.config.ts` design token'larla doldurulacak
-- Faz 5 opsiyonelleri: Locust yük testi ve LangSmith trace doğrulama
+- `/knowledge` URL tipi doküman ekleme: backend content_type="url" destekliyor mu doğrulanmalı
+- Faz 5 opsiyonelleri: Locust yük testi ve LangSmith hâlâ açık
 
 ## Bir Sonraki Adım
 
-1. Faz 6.0 — `frontend/package.json` bağımlılık güncellemesi + `tailwind.config.ts` design tokens
-2. Faz 6.0 — `ui/` atom bileşenleri (Button, Badge, Avatar, Skeleton, Modal, Spinner)
-3. Faz 6.0 — Sidebar + TopBar layout shell (`(shell)/layout.tsx`)
-4. (Opsiyonel) Faz 5 Locust & LangSmith tamamlama
+1. Faz 6.5 — Dashboard: gerçek membro stats + toplantı sayısı
+2. Faz 6.5 — `error.tsx` dosyaları (retry / hata recovery)
+3. Faz 6.5 — TopBar user menüsüne "Ayarlar" linki
+4. Faz 6.5 — Responsive: mobil için sidebar hamburger toggle
+5. (Opsiyonel) Faz 5 Locust & LangSmith tamamlama
 
-## Son Oturum Özeti (2026-03-04 — Faz 6 planlama)
+## Son Oturum Özeti (2026-03-04 — Faz 6.3 + 6.4)
+
+**Faz 6.3 — Kalan toast feedback:**
+- `membro/[guid]/page.tsx` MembroDetailPanel → arşivleme başarı/hata toastları
+- `knowledge/page.tsx` → silme + ekleme toastları, inline hata mesajları kaldırıldı
+- `meeting/[roomId]/page.tsx` → `<Toaster />` eklendi, `onLeave` 1.5sn gecikmeli navigate ile toast gösterir
+
+**Faz 6.4 — Yeni sayfalar + loading skeletonlar:**
+- `(shell)/meetings/page.tsx` → tüm toplantılar listelenir; aktif için "Katıl" + "Bitir", geçmiş için "Tamamlandı" badge, 30sn refetch
+- `dashboard/loading.tsx`, `membro/loading.tsx`, `knowledge/loading.tsx`, `meetings/loading.tsx` → sayfa geçişlerinde skeleton
+- `settings/page.tsx` → gerçek içerik: kullanıcı email, tenant bilgisi, çıkış butonu
+
+## Son Oturum Özeti (2026-03-05 — Faz 6.2)
+
+- `src/components/ui/toast.tsx` → Framer Motion toast sistemi (Zustand store, useToast hook, Toaster bileşeni, auto-dismiss 4sn)
+- `src/app/(shell)/layout.tsx` → `<Toaster />` eklendi
+- `src/lib/api.ts` → `setTokens(accessToken, email?)` — email artık `user_email` key ile localStorage'a yazılıyor; `clearTokens` da temizliyor
+- `src/app/(auth)/login/page.tsx` → `console.log` kaldırıldı, e-posta `setTokens`'a iletiliyor, "Kayıt ol" linki kaldırıldı
+- `src/components/layout/TopBar.tsx` → `useUserInfo()` artık `user_email`'den kullanıcı adını üretiyor
+- `src/app/(shell)/membro/[guid]/page.tsx` → chat state düzeltildi: `useRef + useEffect` ile geçmiş tek seferlik state'e alınıyor, `allMessages/currentMessages` hatası giderildi
+- `src/components/modals/CreateMembroModal.tsx` → `useToast()` eklendi: kayıt başarı/hata bildirimleri
+- `src/components/modals/CreateMeetingModal.tsx` → `useToast()` eklendi: hata bildirimi, inline hata mesajı kaldırıldı
+
+## Son Oturum Özeti (2026-03-04 — Faz 6.1)
+
+- `src/middleware.ts` → JWT guard: `access_token` cookie yoksa `/login?next=...`'e yönlendir; login varken `/login`'e girince `/dashboard`'a yönlendir
+- `src/lib/api.ts` → `setTokens/clearTokens` artık cookie ve localStorage'a birlikte yazar
+- `src/app/(auth)/login/page.tsx` → `next` query param ile geri dönüş yönlendirme
+- `src/app/(shell)/knowledge/page.tsx` → doküman listesi, ekleme modalı (metin/URL), silme
+- `src/app/(shell)/settings/page.tsx` → stub sayfası
+- `src/components/membro/MembroActivityPanel.tsx` → toplantılar + bilgi bankası sekme paneli
+- `src/app/(shell)/membro/[guid]/page.tsx` → sağ panel genişletildi (MembroDetailPanel üst + MembroActivityPanel alt)
+
+## Son Oturum Özeti (2026-03-05 — Faz 6.0 Foundation)
+
+**Paket kurulumu:**
+- `npm install zustand @tanstack/react-query framer-motion lucide-react`
+
+**Oluşturulan dosyalar (Faz 6.0):**
+- `globals.css` → tam design token sistemi (brand renkler, yüzey skalası, keyframes, `.glass`)
+- `app/layout.tsx` → Providers wrapper
+- `src/components/providers.tsx` → QueryClientProvider
+- `src/types/index.ts` → tüm TypeScript tipleri
+- `src/lib/api.ts` → JWT'li API istemcisi
+- `src/stores/appStore.ts` → Zustand (sidebar + modal state)
+- UI atomları: Button, Badge (`MembroStatusBadge` dahil), Avatar, Skeleton, Spinner, Modal, Input
+- Layout: Sidebar, TopBar
+- `(shell)/layout.tsx` → shell sarmalayıcı
+- `components/modals/CreateMembroModal.tsx` → sol panel: membro listesi, sağ: form
+- `components/modals/CreateMeetingModal.tsx` → membro seç + başlık + API çağrısı
+- `app/page.tsx` → `/dashboard`'a redirect
+- `(auth)/layout.tsx` → minimal auth sarmalayıcı
+- `(auth)/login/page.tsx` → email+şifre formu
+- `(shell)/dashboard/page.tsx` → hızlı aksiyonlar + spotlight + aktivite
+- `(shell)/membro/page.tsx` → membro grid listesi
+- `components/membro/MembroCard.tsx` → grid kartı
+- `(shell)/membro/[guid]/page.tsx` → chat + detay paneli
+- `components/chat/ChatBubble.tsx`, `ChatInput.tsx`, `ChatTimeline.tsx`
+- `app/meeting/[roomId]/page.tsx` → VoiceRoom (Faz 4) tam ekran
+
+**Düzeltilen hatalar:**
+- `setTokens(tokens.access_token)` (AuthTokens → string)
+- `last_interaction_at ?? 0` (null guard)
+- `chatApi.stream({ membro_id, message })` (nesne imzası)
+- `meetingApi.create(selectedMembroId, title)` (iki argüman imzası)
+- VoiceRoom: `membroId` prop query param ile geçirildi
+
+
 
 **Faz 6 tanımlandı:**
 - Firecrawl ile 2026 UX/UI trend araştırması yapıldı (Fuselab Creative + JetBase)

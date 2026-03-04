@@ -11,7 +11,7 @@
 | Faz 3 | Bilgi Bankası ve GraphRAG | `TAMAMLANDI` | 8/8 test geçti; Milvus RAG + Neo4j GraphRAG + chunk silme doğrulandı |
 | Faz 4 | Realtime Voice ve Toplantı Altyapısı | `TAMAMLANDI` | 10/10 test geçti; LiveKit + OpenAI Realtime API |
 | Faz 5 | Test, Güvenlik ve Lansman | `DEVAM EDİYOR` | 14/14 test geçti (6 atlandı — Docker içi izolasyon), Locust + LangSmith kaldı |
-| Faz 6 | Tenant Frontend Uygulaması | `PLANLANDI` | Doküman hazır; 2026 UX/UI araştırması tamamlandı — implementasyon başlamadı |
+| Faz 6 | Tenant Frontend Uygulaması | `DEVAM EDİYOR` | Faz 6.5 kısmen tamamlandı — error.tsx, not-found.tsx, settings loading, dashboard istatistik şeridi |
 
 ## Tamamlanan Görevler
 

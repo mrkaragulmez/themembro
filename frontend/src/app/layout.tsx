@@ -1,23 +1,27 @@
-// frontend/src/app/layout.tsx
-// Faz 1 — Root layout
+/**
+ * frontend/src/app/layout.tsx
+ * Faz 6 — Root layout
+ * Providers (QueryClient) ve global CSS buraya mount edilir.
+ */
 
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Membro",
+  title: { default: "Membro", template: "%s · Membro" },
   description: "Agentic AI Platform",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="tr">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {children}
+      <body className="min-h-screen antialiased">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
