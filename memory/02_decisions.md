@@ -4,6 +4,14 @@ Her önemli karar tarih ve gerekçesiyle buraya kaydedilir. Bir karar değişirs
 
 ---
 
+## [2026-03-04] Login Flow: X-Tenant-Slug header + access_token response body
+
+**Karar:** Frontend `apiFetch` tüm requestlere `X-Tenant-Slug` header'ını ekler; backend `/auth/login` ve `/auth/register` endpointleri `access_token`'ı hem cookie hem response body'e yazar.
+**Gerekçe:** Backend `tenant_middleware` tenant'ı `X-Tenant-Slug` header'ından çözüyor. Frontend `http://testco.localhost`'tan `http://localhost:8000`'e istek attığında subdomain bilgisi kayboluyordu. `getTenantSlug()` helper'ı `window.location.hostname`'den slug'ı çıkarıp tüm requestlere ekler. İkinci sorun: backend token'ı sadece cookie'ye yazıyordu ama frontend `tokens.access_token` bekliyordu (localStorage auth flow); body'e de eklendi.
+**Alternatifler değerlendirildi:** (1) Backend'e Host header'dan slug çıkarma — cross-origin isteklerde Host değişebilir ve güvensiz. (2) Frontend cookie'den okuma — SameSite=Lax cross-origin cookie bloğu nedeniyle çalışmaz.
+
+---
+
 ## [2026-03-04] Faz 6 Frontend Design System Kararları
 
 **Karar:** Tenant frontend uygulaması için kendi design token sistemi (Tailwind CSS custom properties), Framer Motion animasyonlar, Zustand UI state, TanStack Query server state ve SSE-tabanlı chat stream seçildi. shadcn/ui kullanılmıyor.

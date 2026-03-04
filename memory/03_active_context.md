@@ -4,7 +4,7 @@
 
 ## Şu An Neredeyiz?
 
-**Faz 6.5 kısmen tamamlandı.** error.tsx + not-found.tsx, 5 loading.tsx skeleton, dashboard istatistik şeridi + kişisel selamlama + gerçek toplantı listesi, TopBar temizliği. TypeScript sıfır hata.
+**Faz 6.5 kısmen tamamlandı.** Login flow bugged fix edildi (X-Tenant-Slug header + access_token response body). error.tsx + not-found.tsx, 5 loading.tsx skeleton, dashboard istatistik şeridi + kişisel selamlama + gerçek toplantı listesi, TopBar temizliği. TypeScript sıfır hata.
 
 ## Aktif Çalışma Konusu
 
@@ -22,6 +22,12 @@ Faz 6.6 — Kalan MVP detayları
 3. Faz 6.5 — TopBar user menüsüne "Ayarlar" linki
 4. Faz 6.5 — Responsive: mobil için sidebar hamburger toggle
 5. (Opsiyonel) Faz 5 Locust & LangSmith tamamlama
+
+## Son Oturum Özeti (2026-03-04 — Login Bug Fix)
+
+**Login akışı iki bağımsız hata içeriyordu:**
+- `api.ts` — `apiFetch` ve streaming chat fetch'i `X-Tenant-Slug` header'ı göndermiyordu; backend tenant_middleware bu header olmadan 400 `tenant_context_required` hatası fırlatıyordu. `getTenantSlug()` helper'ı eklendi: `testco.localhost` → `testco` çıkararak tüm requestlere `X-Tenant-Slug` header'ı ekleniyor.
+- `auth.py` — `/auth/login` ve `/auth/register` endpointleri `access_token`'ı yalnızca cookie'ye yazıyor, response body'e eklemiyordu. Frontend `tokens.access_token` okuyup `undefined` ile `setTokens()` çağırıyordu. Her iki endpoint de artık `access_token` + `token_type` body'de de döndürüyor.
 
 ## Son Oturum Özeti (2026-03-04 — Faz 6.3 + 6.4)
 

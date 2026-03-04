@@ -108,7 +108,12 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
     db.add(rt)
 
     _set_cookies(response, pair, settings.app_domain)
-    return {"message": "registered", "user_id": str(user.id)}
+    return {
+        "message": "registered",
+        "user_id": str(user.id),
+        "access_token": pair.access_token,
+        "token_type": "bearer",
+    }
 
 
 # ─── Login ───────────────────────────────────────────────────────
@@ -146,7 +151,12 @@ async def login(
     db.add(rt)
 
     _set_cookies(response, pair, settings.app_domain)
-    return {"message": "ok", "role": user.role}
+    return {
+        "message": "ok",
+        "role": user.role,
+        "access_token": pair.access_token,
+        "token_type": "bearer",
+    }
 
 
 # ─── Refresh ──────────────────────────────────────────────────

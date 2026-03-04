@@ -17,6 +17,24 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+// ─── Tenant Helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Tarayıcı hostname'inden tenant slug'ını çıkarır.
+ * testco.localhost   → "testco"
+ * testco.themembro.com → "testco"
+ * localhost          → null  (geliştirme / public)
+ */
+export function getTenantSlug(): string | null {
+  if (typeof window === "undefined") return null;
+  const parts = window.location.hostname.split(".");
+  // En az 2 parça ve ilk parça "localhost" veya "www" değilse slug kabul et
+  if (parts.length >= 2 && parts[0] !== "localhost" && parts[0] !== "www") {
+    return parts[0];
+  }
+  return null;
+}
+
 // ─── Token Helpers ───────────────────────────────────────────────────────────
 
 export function getAccessToken(): string | null {
@@ -53,6 +71,12 @@ async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Tenant slug'ı her zaman gönder — backend tenant_middleware için zorunlu
+  const slug = getTenantSlug();
+  if (slug) {
+    headers["X-Tenant-Slug"] = slug;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
@@ -81,7 +105,7 @@ async function apiFetch<T>(
 
 export const authApi = {
   login: (email: string, password: string) =>
-    apiFetch<{ access_token: string; token_type: string }>("/api/v1/auth/login", {
+    apiFetch<{ access_token: string; token_type: string; role: string }>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
@@ -121,11 +145,13 @@ export const chatApi = {
   stream: async (payload: ChatRequest): Promise<ReadableStream<Uint8Array>> => {
     const token = getAccessToken();
 
+    const slug = getTenantSlug();
     const res = await fetch(`${API_BASE}/api/v1/chat/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(slug ? { "X-Tenant-Slug": slug } : {}),
       },
       body: JSON.stringify(payload),
     });
