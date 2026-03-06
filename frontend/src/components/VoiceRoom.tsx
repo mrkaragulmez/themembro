@@ -1,9 +1,13 @@
 /**
- * frontend/src/app/components/VoiceRoom.tsx
+ * frontend/src/components/VoiceRoom.tsx
  * Faz 4 — WebRTC Sesli Toplantı Bileşeni
  *
  * Membro API'sine istek atarak LiveKit token alır ve
  * WebRTC Room'a bağlanır. Mikrofon durumu + transcript görüntülenir.
+ *
+ * Not: API çağrıları api.ts'deki meetingApi üzerinden yapılır;
+ * subdomain-based tenant routing (testco.localhost) otomatik olarak
+ * apiFetch tarafından yönetilir.
  */
 
 "use client";
@@ -12,13 +16,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
-  useRoomContext,
   useLocalParticipant,
   useTracks,
   AudioTrack,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { Track } from "livekit-client";
+import { meetingApi } from "@/lib/api";
+import type { Meeting } from "@/types";
 
 // ─── Tipler ─────────────────────────────────────────────────────────────────
 
@@ -27,53 +32,6 @@ interface TranscriptLine {
   speaker: "user" | string;
   text: string;
   ts: string;
-}
-
-interface MeetingSession {
-  meetingId: string;
-  roomName: string;
-  livekitUrl: string;
-  token: string;
-}
-
-// ─── API Yardımcı ────────────────────────────────────────────────────────────
-
-async function createMeeting(
-  membroId: string,
-  apiBase: string
-): Promise<MeetingSession> {
-  const res = await fetch(`${apiBase}/api/v1/meetings/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // JWT token cookie'den veya localStorage'dan alınmalı;
-      // gerçek auth entegrasyonu Faz 5'te tamamlanır
-      Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}`,
-    },
-    body: JSON.stringify({ membro_id: membroId }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `HTTP ${res.status}`);
-  }
-
-  const data = await res.json();
-  return {
-    meetingId: data.meeting_id,
-    roomName: data.room_name,
-    livekitUrl: data.livekit_url,
-    token: data.token,
-  };
-}
-
-async function endMeeting(meetingId: string, apiBase: string): Promise<void> {
-  await fetch(`${apiBase}/api/v1/meetings/${meetingId}/end`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}`,
-    },
-  });
 }
 
 // ─── İç bileşen: Room içinde transcript takibi ──────────────────────────────
@@ -128,8 +86,6 @@ function VoiceControls({
 export interface VoiceRoomProps {
   /** Hangi Membro ile toplantı yapılacak */
   membroId: string;
-  /** Backend API base URL (default: http://localhost:8000) */
-  apiBase?: string;
   /** Toplantıdan çıkıldığında çağrılır */
   onLeave?: () => void;
 }
@@ -138,12 +94,11 @@ type Phase = "idle" | "connecting" | "connected" | "error" | "ended";
 
 export default function VoiceRoom({
   membroId,
-  apiBase = "http://localhost:8000",
   onLeave,
 }: VoiceRoomProps) {
   const [phase, setPhase]       = useState<Phase>("idle");
   const [error, setError]       = useState<string | null>(null);
-  const [session, setSession]   = useState<MeetingSession | null>(null);
+  const [session, setSession]   = useState<Meeting | null>(null);
   const [transcripts, setTranscripts] = useState<TranscriptLine[]>([]);
   const transcriptRef           = useRef<HTMLDivElement>(null);
 
@@ -158,8 +113,9 @@ export default function VoiceRoom({
     setPhase("connecting");
     setError(null);
     try {
-      const s = await createMeeting(membroId, apiBase);
-      setSession(s);
+      // meetingApi.create → apiFetch → <slug>.localhost/api/v1/meetings/
+      const meeting = await meetingApi.create(membroId);
+      setSession(meeting);
       setPhase("connected");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Bağlantı hatası");
@@ -169,7 +125,8 @@ export default function VoiceRoom({
 
   const handleLeave = async () => {
     if (session) {
-      await endMeeting(session.meetingId, apiBase).catch(() => {});
+      // meetingApi.end → apiFetch → <slug>.localhost/api/v1/meetings/{id}/end
+      await meetingApi.end(session.id).catch(() => {});
     }
     setSession(null);
     setPhase("ended");
@@ -221,7 +178,7 @@ export default function VoiceRoom({
 
       {/* LiveKit Room bağlantısı */}
       <LiveKitRoom
-        serverUrl={session!.livekitUrl}
+        serverUrl={session!.livekit_url}
         token={session!.token}
         connect={true}
         audio={true}

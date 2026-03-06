@@ -6,6 +6,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -100,7 +101,7 @@ function MembroItem({
           aria-hidden="true"
         />
       )}
-      <Avatar name={membro.name} color={membro.color} size="xs" />
+      <Avatar name={membro.name} size="xs" />
       {!collapsed && (
         <span className="truncate flex-1 text-sm">{membro.name}</span>
       )}
@@ -112,7 +113,19 @@ function MembroItem({
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, openCreateMembro } = useAppStore();
+  const {
+    sidebarCollapsed,
+    toggleSidebar,
+    openCreateMembro,
+    sidebarMobileOpen,
+    closeSidebarMobile,
+  } = useAppStore();
+
+  // Rota değiştiğinde mobil sidebar'ı kapat
+  useEffect(() => {
+    closeSidebarMobile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const { data: membros, isLoading } = useQuery({
     queryKey: ["membros"],
@@ -123,7 +136,7 @@ export function Sidebar() {
   // Frekansa göre sıralama: last_interaction_at'e göre (en son en üstte)
   const sortedMembros = membros
     ? [...membros]
-        .filter((m) => m.status !== "archived")
+        .filter((m) => m.is_active)
         .sort((a, b) => {
           if (!a.last_interaction_at && !b.last_interaction_at) return 0;
           if (!a.last_interaction_at) return 1;
@@ -144,8 +157,15 @@ export function Sidebar() {
     <aside
       className={clsx(
         "flex flex-col h-full bg-surface-0 border-r border-border-default",
+        // Mobil: fixed overlay; masaüstü: relative (flow içinde)
+        "fixed inset-y-0 left-0 z-40 md:relative md:z-auto",
+        // Mobilde transform ile göster/gizle; masaüstünde her zaman görünür
+        sidebarMobileOpen ? "translate-x-0" : "-translate-x-full",
+        "md:translate-x-0",
+        // Geçiş animasyonu (transform + width)
         "transition-all duration-200 ease-in-out",
-        sidebarCollapsed ? "w-[60px]" : "w-[240px]"
+        // Genişlik: masaüstü collapse'e göre, mobil her zaman 240px
+        sidebarCollapsed ? "w-[240px] md:w-[60px]" : "w-[240px]"
       )}
     >
       {/* Logo */}

@@ -1,8 +1,7 @@
 /**
  * frontend/src/components/modals/CreateMembroModal.tsx
- * Faz 6 — CreateMembro Modal
- * Sol: scrollable membro listesi | Sağ: form
- * Faz 6.3 kapsamında tam API entegrasyonu yapılacak.
+ * Faz 6 — CreateMembro Modal (yeniden yazıldı)
+ * Sol: SYS_Membros şablon kataloğu (12 kart) | Sağ: ekstra prompt + skills
  */
 
 "use client";
@@ -10,97 +9,98 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { Plus } from "lucide-react";
+import { Lock, Zap, AlertCircle } from "lucide-react";
 
 import { useAppStore } from "@/stores/appStore";
-import { membroApi } from "@/lib/api";
+import { membroApi, sysMembroApi } from "@/lib/api";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea } from "@/components/ui/input";
-import { Avatar } from "@/components/ui/avatar";
-import { MembroStatusBadge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { MEMBRO_COLORS } from "@/types";
-import type { Membro, CreateMembroPayload } from "@/types";
+import type { SysMembro, SysSkillWithStatus } from "@/types";
 
 // ─── Tool listesi (backend MCP skills'ten gelecek, şimdilik sabit) ───────────
 
-const AVAILABLE_TOOLS = [
-  { id: "knowledge_search", label: "Bilgi Arama" },
-  { id: "send_email",       label: "E-posta Gönder" },
-  { id: "calendar",         label: "Takvim",  disabled: true },
-];
+// (eski AVAILABLE_TOOLS kaldırıldı — skill'ler artık SYS_Skills'ten geliyor)
 
 // ─── Boş form state ───────────────────────────────────────────────────────────
 
-const EMPTY_FORM: CreateMembroPayload = {
-  name: "",
-  persona: "",
-  system_prompt: "",
-  tools: ["knowledge_search"],
-  color: MEMBRO_COLORS[0],
-};
+
 
 // ─── Sol panel: Membro listesi ────────────────────────────────────────────────
 
-function MembroList({
-  membros,
+// ─── Sol panel: Şablon Kataloğu ───────────────────────────────────────────────
+
+function TemplateCard({
+  template,
+  selected,
+  onClick,
+}: {
+  template: SysMembro;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "flex flex-col items-start gap-1 w-full rounded-xl p-3 text-left",
+        "border transition-all duration-100",
+        selected
+          ? "border-brand-periwinkle bg-info/5 shadow-[0_0_0_1px_theme(colors.brand.periwinkle)]"
+          : "border-border-default hover:border-border-active hover:bg-surface-50"
+      )}
+    >
+      <p className="text-sm font-semibold text-text-primary leading-tight">{template.name}</p>
+      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-surface-100 text-text-tertiary uppercase tracking-wide">
+        {template.role}
+      </span>
+      {template.description && (
+        <p className="text-xs text-text-tertiary line-clamp-2 mt-0.5">{template.description}</p>
+      )}
+    </button>
+  );
+}
+
+function TemplateCatalog({
+  templates,
+  isLoading,
   selectedId,
   onSelect,
-  onNewMembro,
 }: {
-  membros: Membro[];
+  templates: SysMembro[];
+  isLoading: boolean;
   selectedId: string | null;
-  onSelect: (m: Membro) => void;
-  onNewMembro: () => void;
+  onSelect: (t: SysMembro) => void;
 }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 py-4 border-b border-border-default shrink-0">
         <p className="text-xs font-semibold uppercase tracking-widest text-text-tertiary">
-          Membro'larım
+          Membro Şablonları
         </p>
+        <p className="text-xs text-text-tertiary mt-0.5">Bir rol seçerek başla</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin space-y-0.5">
-        {membros.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => onSelect(m)}
-            className={clsx(
-              "flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-left",
-              "transition-colors duration-100 relative",
-              selectedId === m.id
-                ? "bg-surface-100 text-text-primary"
-                : "hover:bg-surface-50 text-text-secondary hover:text-text-primary"
-            )}
-          >
-            {selectedId === m.id && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-brand-periwinkle" />
-            )}
-            <Avatar name={m.name} color={m.color} size="sm" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{m.name}</p>
-              <MembroStatusBadge status={m.status} />
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="p-2 border-t border-border-default shrink-0">
-        <button
-          onClick={onNewMembro}
-          className={clsx(
-            "flex items-center gap-2 w-full rounded-xl px-3 py-2 text-sm",
-            selectedId === null
-              ? "bg-surface-100 text-text-primary font-medium"
-              : "text-text-secondary hover:bg-surface-50 hover:text-text-primary",
-            "transition-colors duration-100"
-          )}
-        >
-          <Plus size={15} />
-          <span>Yeni Membro</span>
-        </button>
+      <div className="flex-1 overflow-y-auto p-3 scrollbar-thin">
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-20 rounded-xl bg-surface-50 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {templates.map((t) => (
+              <TemplateCard
+                key={t.id}
+                template={t}
+                selected={selectedId === t.id}
+                onClick={() => onSelect(t)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -108,126 +108,159 @@ function MembroList({
 
 // ─── Sağ panel: Form ──────────────────────────────────────────────────────────
 
-function MembroForm({
-  initialData,
-  onSave,
-  isSaving,
+// ─── Sağ panel: Skill satırı + Konfig paneli ─────────────────────────────────
+
+function SkillRow({
+  skill,
+  active,
+  onToggle,
 }: {
-  initialData: CreateMembroPayload;
-  onSave: (data: CreateMembroPayload) => void;
-  isSaving: boolean;
+  skill: SysSkillWithStatus;
+  active: boolean;
+  onToggle: () => void;
 }) {
-  const [form, setForm] = useState<CreateMembroPayload>(initialData);
-
-  function update<K extends keyof CreateMembroPayload>(key: K, value: CreateMembroPayload[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function toggleTool(toolId: string) {
-    setForm((prev) => ({
-      ...prev,
-      tools: prev.tools.includes(toolId)
-        ? prev.tools.filter((t) => t !== toolId)
-        : [...prev.tools, toolId],
-    }));
-  }
+  const isSelf     = skill.is_self_skill;
+  const canToggle  = !isSelf && skill.has_integration;
+  const needsInteg = !isSelf && !skill.has_integration;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 scrollbar-thin">
-        {/* İsim */}
-        <Input
-          label="İsim"
-          placeholder="Örn: Satış Asistanı"
-          value={form.name}
-          onChange={(e) => update("name", e.target.value)}
-          maxLength={80}
-        />
-
-        {/* Persona */}
-        <Input
-          label="Persona Özeti"
-          placeholder="Örn: Müşteri sorularını cevaplar"
-          value={form.persona}
-          onChange={(e) => update("persona", e.target.value)}
-          maxLength={120}
-          hint={`${form.persona.length}/120`}
-        />
-
-        {/* Sistem Prompt */}
-        <Textarea
-          label="Sistem Prompt"
-          placeholder="Sen bir satış asistanısın. Müşteri sorularına nazik ve doğru şekilde cevap ver..."
-          value={form.system_prompt}
-          onChange={(e) => update("system_prompt", e.target.value)}
-          rows={5}
-          hint="Bu metin, membro'nun her konuşmada referans alacağı kimliği tanımlar."
-        />
-
-        {/* Renk seçimi */}
-        <div>
-          <p className="text-sm font-medium text-text-primary mb-2">Avatar Rengi</p>
-          <div className="flex gap-2 flex-wrap">
-            {MEMBRO_COLORS.map((color) => (
-              <button
-                key={color}
-                onClick={() => update("color", color)}
-                className={clsx(
-                  "w-7 h-7 rounded-full transition-all",
-                  form.color === color
-                    ? "ring-2 ring-offset-2 ring-brand-periwinkle scale-110"
-                    : "hover:scale-105"
-                )}
-                style={{ backgroundColor: color }}
-                aria-label={`Renk: ${color}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Yetenekler */}
-        <div>
-          <p className="text-sm font-medium text-text-primary mb-2">Yetenekler (Tools)</p>
-          <div className="space-y-2">
-            {AVAILABLE_TOOLS.map((tool) => (
-              <label
-                key={tool.id}
-                className={clsx(
-                  "flex items-center gap-3 p-3 rounded-xl border cursor-pointer",
-                  "transition-colors duration-100",
-                  tool.disabled && "opacity-40 cursor-not-allowed",
-                  form.tools.includes(tool.id)
-                    ? "border-brand-periwinkle bg-info/5"
-                    : "border-border-default hover:border-border-active"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={form.tools.includes(tool.id)}
-                  onChange={() => !tool.disabled && toggleTool(tool.id)}
-                  disabled={tool.disabled}
-                  className="accent-brand-periwinkle"
-                />
-                <span className="text-sm text-text-primary">{tool.label}</span>
-                {tool.disabled && (
-                  <span className="ml-auto text-xs text-text-tertiary">Yakında</span>
-                )}
-              </label>
-            ))}
-          </div>
+    <div
+      className={clsx(
+        "flex items-center justify-between gap-3 p-3 rounded-xl border",
+        "transition-colors duration-100",
+        active && !needsInteg
+          ? "border-brand-periwinkle bg-info/5"
+          : "border-border-default",
+        needsInteg && "opacity-60"
+      )}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        {isSelf ? (
+          <Zap size={15} className="text-brand-periwinkle shrink-0" />
+        ) : (
+          <div className={clsx("w-3.5 h-3.5 rounded-full border-2 shrink-0",
+            active && canToggle ? "bg-brand-periwinkle border-brand-periwinkle" : "border-border-default"
+          )} />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text-primary">{skill.name}</p>
+          {skill.description && (
+            <p className="text-xs text-text-tertiary truncate">{skill.description}</p>
+          )}
         </div>
       </div>
 
-      {/* Footer */}
+      <div className="shrink-0">
+        {isSelf ? (
+          <span className="flex items-center gap-1 text-[10px] text-text-tertiary">
+            <Lock size={10} />
+            Dahili
+          </span>
+        ) : needsInteg ? (
+          <span className="flex items-center gap-1 text-[10px] text-warning">
+            <AlertCircle size={10} />
+            Entegrasyon yok
+          </span>
+        ) : (
+          <button
+            onClick={onToggle}
+            className={clsx(
+              "relative w-9 h-5 rounded-full transition-colors duration-150",
+              active ? "bg-brand-periwinkle" : "bg-surface-100"
+            )}
+            aria-pressed={active}
+            aria-label={`${skill.name} ${active ? "kapat" : "aç"}`}
+          >
+            <span
+              className={clsx(
+                "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow",
+                "transition-transform duration-150",
+                active ? "translate-x-[18px]" : "translate-x-0.5"
+              )}
+            />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfigPanel({
+  template,
+  skills,
+  skillsLoading,
+  extraPrompt,
+  onExtraPromptChange,
+  activeCaps,
+  onToggleCap,
+  onSubmit,
+  isSubmitting,
+}: {
+  template: SysMembro;
+  skills: SysSkillWithStatus[];
+  skillsLoading: boolean;
+  extraPrompt: string;
+  onExtraPromptChange: (v: string) => void;
+  activeCaps: string[];
+  onToggleCap: (slug: string) => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-4 border-b border-border-default shrink-0">
+        <h2 className="text-base font-semibold text-text-primary">{template.name}</h2>
+        <p className="text-xs text-text-tertiary mt-0.5">{template.role}</p>
+        {template.description && (
+          <p className="text-sm text-text-secondary mt-2">{template.description}</p>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 scrollbar-thin">
+        <Textarea
+          label="Ekstra Talimatlar (opsiyonel)"
+          placeholder="Bu membro'ya özgü ek talimatlar... Örn: Her zaman Türkçe yanıt ver."
+          value={extraPrompt}
+          onChange={(e) => onExtraPromptChange(e.target.value)}
+          rows={4}
+          hint="Bu metin, membro'nun temel rolüne eklenir. Boş bırakabilirsin."
+        />
+
+        <div>
+          <p className="text-sm font-medium text-text-primary mb-3">Skills</p>
+          {skillsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-14 rounded-xl bg-surface-50 animate-pulse" />
+              ))}
+            </div>
+          ) : skills.length === 0 ? (
+            <p className="text-xs text-text-tertiary">
+              Bu şablon için henüz skill tanımlanmamış.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {skills.map((skill) => (
+                <SkillRow
+                  key={skill.id}
+                  skill={skill}
+                  active={skill.is_self_skill || activeCaps.includes(skill.slug)}
+                  onToggle={() => onToggleCap(skill.slug)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="shrink-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-border-default">
         <Button
           variant="primary"
           size="md"
-          onClick={() => onSave(form)}
-          loading={isSaving}
-          disabled={!form.name.trim()}
+          onClick={onSubmit}
+          loading={isSubmitting}
         >
-          Kaydet
+          Oluştur
         </Button>
       </div>
     </div>
@@ -241,44 +274,64 @@ export function CreateMembroModal() {
   const queryClient = useQueryClient();
   const toast = useToast();
 
-  const { data: membros = [] } = useQuery({
-    queryKey: ["membros"],
-    queryFn: membroApi.list,
-    enabled: createMembroModalOpen,
+  const [selectedTemplate, setSelectedTemplate] = useState<SysMembro | null>(null);
+  const [extraPrompt, setExtraPrompt]           = useState("");
+  const [activeCaps, setActiveCaps]             = useState<string[]>([]);
+
+  // Şablon listesini yükle (public endpoint — auth gerektirmez)
+  const { data: templates = [], isLoading: templatesLoading } = useQuery({
+    queryKey: ["sys-membros"],
+    queryFn:  sysMembroApi.list,
+    enabled:  createMembroModalOpen,
   });
 
-  const [selectedMembro, setSelectedMembro] = useState<Membro | null>(null);
+  // Seçili şablonun skill'lerini yükle
+  const { data: skills = [], isLoading: skillsLoading } = useQuery({
+    queryKey: ["sys-membro-skills", selectedTemplate?.id],
+    queryFn:  () => sysMembroApi.getSkills(selectedTemplate!.id),
+    enabled:  !!selectedTemplate,
+  });
 
-  // Yeni membro seçilince null; var olanda Membro objesi
-  const formInitial: CreateMembroPayload = selectedMembro
-    ? {
-        name:          selectedMembro.name,
-        persona:       selectedMembro.persona,
-        system_prompt: selectedMembro.system_prompt,
-        tools:         selectedMembro.tools,
-        color:         selectedMembro.color,
-      }
-    : EMPTY_FORM;
+  function handleSelectTemplate(t: SysMembro) {
+    setSelectedTemplate(t);
+    setExtraPrompt("");
+    setActiveCaps([]);
+  }
+
+  function handleToggleCap(slug: string) {
+    setActiveCaps((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  }
 
   const mutation = useMutation({
-    mutationFn: (data: CreateMembroPayload) =>
-      selectedMembro
-        ? membroApi.update(selectedMembro.id, data)
-        : membroApi.create(data),
+    mutationFn: () => {
+      if (!selectedTemplate) throw new Error("Şablon seçilmedi.");
+      // Self-skill'lerin slug'larını da dahil et
+      const selfSlugs = skills
+        .filter((s) => s.is_self_skill)
+        .map((s) => s.slug);
+      return membroApi.create({
+        sys_membro_id: selectedTemplate.id,
+        extra_prompt:  extraPrompt.trim() || undefined,
+        tools_json:    [...selfSlugs, ...activeCaps],
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["membros"] });
-      toast.success(selectedMembro ? "Membro güncellendi." : "Membro oluşturuldu.");
-      closeModals();
-      setSelectedMembro(null);
+      toast.success("Membro oluşturuldu.");
+      handleClose();
     },
     onError: () => {
-      toast.error("Kaydedilemedi, tekrar dene.");
+      toast.error("Oluşturulamadı, tekrar dene.");
     },
   });
 
   function handleClose() {
     closeModals();
-    setSelectedMembro(null);
+    setSelectedTemplate(null);
+    setExtraPrompt("");
+    setActiveCaps([]);
   }
 
   return (
@@ -289,29 +342,44 @@ export function CreateMembroModal() {
       closeOnBackdrop
     >
       <div className="flex h-full">
-        {/* Sol panel */}
-        <div className="w-[280px] shrink-0 border-r border-border-default overflow-hidden">
-          <MembroList
-            membros={membros}
-            selectedId={selectedMembro?.id ?? null}
-            onSelect={(m) => setSelectedMembro(m)}
-            onNewMembro={() => setSelectedMembro(null)}
+        {/* Sol panel — Şablon Kataloğu */}
+        <div className="w-[320px] shrink-0 border-r border-border-default overflow-hidden">
+          <TemplateCatalog
+            templates={templates}
+            isLoading={templatesLoading}
+            selectedId={selectedTemplate?.id ?? null}
+            onSelect={handleSelectTemplate}
           />
         </div>
 
-        {/* Sağ panel */}
+        {/* Sağ panel — Konfigürasyon veya boş durum */}
         <div className="flex-1 overflow-hidden">
-          <div className="px-6 py-4 border-b border-border-default">
-            <h2 className="text-base font-semibold text-text-primary">
-              {selectedMembro ? `${selectedMembro.name} — Düzenle` : "Yeni Membro Oluştur"}
-            </h2>
-          </div>
-          <MembroForm
-            key={selectedMembro?.id ?? "__new__"}
-            initialData={formInitial}
-            onSave={(data) => mutation.mutate(data)}
-            isSaving={mutation.isPending}
-          />
+          {selectedTemplate ? (
+            <ConfigPanel
+              template={selectedTemplate}
+              skills={skills}
+              skillsLoading={skillsLoading}
+              extraPrompt={extraPrompt}
+              onExtraPromptChange={setExtraPrompt}
+              activeCaps={activeCaps}
+              onToggleCap={handleToggleCap}
+              onSubmit={() => mutation.mutate()}
+              isSubmitting={mutation.isPending}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-text-tertiary px-8 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-surface-50 flex items-center justify-center">
+                <Zap size={22} className="text-text-secondary" />
+              </div>
+              <p className="text-sm font-medium text-text-secondary">
+                Soldan bir şablon seç
+              </p>
+              <p className="text-xs leading-relaxed max-w-xs">
+                Her membro, önceden tanımlanmış bir role (şablona) dayanır.
+                İstersen ekstra talimatlar ekleyerek özelleştirebilirsin.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Modal>

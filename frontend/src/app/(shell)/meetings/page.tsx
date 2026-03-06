@@ -74,7 +74,7 @@ function MeetingCard({
       {/* Avatar */}
       <div className="shrink-0">
         {membro ? (
-          <Avatar name={membro.name} color={membro.color} size="md" />
+          <Avatar name={membro.name} size="md" />
         ) : (
           <div className="w-10 h-10 rounded-full bg-surface-100 flex items-center justify-center">
             <Video size={16} className="text-text-tertiary" />

@@ -4,12 +4,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // API istekleri backend'e yönlendirilir (Docker ağında "backend" hostname)
+  // API istekleri backend'e yönlendirilir
+  // BACKEND_URL: Docker içi Next.js → backend iç ağ adresi (browser'a açılmaz)
+  // NEXT_PUBLIC_API_URL olmadığında browser göreceli /api/... kullanır → Nginx proxy eder
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL ?? "http://backend:8000"}/api/:path*`,
+        destination: `${process.env.BACKEND_URL ?? "http://backend:8000"}/api/:path*`,
       },
     ];
   },

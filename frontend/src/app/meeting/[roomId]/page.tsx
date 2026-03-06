@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toast";
 
 const VoiceRoom = dynamic(
-  () => import("@/app/components/VoiceRoom"),
+  () => import("@/components/VoiceRoom"),
   { ssr: false }
 );
 

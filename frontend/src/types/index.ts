@@ -36,27 +36,67 @@ export const MEMBRO_COLORS = [
 
 export interface Membro {
   id: string;
-  name: string;
-  persona: string;
-  system_prompt: string;
-  status: MembroStatus;
-  color: string;               // MEMBRO_COLORS'dan biri
-  tools: string[];             // MCP skill name'leri
-  last_interaction_at: string | null;
-  created_at: string;
+  sys_membro_id: string | null;
   tenant_id: string;
+  name: string;
+  description: string | null;
+  system_prompt: string | null;
+  extra_prompt: string | null;
+  tools_json: string[] | null;
+  is_active: boolean;
+  last_interaction_at?: string | null;
 }
 
 export interface CreateMembroPayload {
-  name: string;
-  persona: string;
-  system_prompt: string;
-  tools: string[];
-  color?: string;
+  sys_membro_id: string;      // zorunlu — SYS_Membros şablonu
+  name?: string;              // opsiyonel; verilmezse şablon adı kullanılır
+  extra_prompt?: string;      // base prompt'a ek talimatlar
+  tools_json?: string[];      // aktif capability slug listesi
+  description?: string;
 }
 
-export interface UpdateMembroPayload extends Partial<CreateMembroPayload> {
-  status?: MembroStatus;
+export interface UpdateMembroPayload {
+  name?: string;
+  extra_prompt?: string;
+  tools_json?: string[];
+  is_active?: boolean;
+}
+
+// ─── SYS_Membros (Sistem Şablonları) ─────────────────────────────────────────
+
+export interface SysMembro {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface SysSkillWithStatus {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  is_self_skill: boolean;
+  has_integration: boolean;
+}
+
+// ─── MO_Integrations ───────────────────────────────────────────────────────
+
+export interface Integration {
+  id: string;
+  tenant_id: string;
+  sys_skill_id: string;
+  skill_name: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface CreateIntegrationPayload {
+  sys_skill_id: string;
+  name: string;
+  credentials: Record<string, string>;
 }
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
@@ -73,8 +113,8 @@ export interface ChatMessage {
 }
 
 export interface ChatRequest {
-  membro_id: string;
   message: string;
+  conversation_id?: string;
 }
 
 // ─── Meeting ─────────────────────────────────────────────────────────────────

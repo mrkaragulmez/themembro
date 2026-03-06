@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/appStore";
 import type { Membro } from "@/types";
 
-function timeAgo(dateStr: string | null): string {
+function timeAgo(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -44,15 +44,15 @@ export function MembroCard({ membro }: MembroCardProps) {
       {/* Üst: Avatar + İsim + Status */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Avatar name={membro.name} color={membro.color} size="md" />
+          <Avatar name={membro.name} size="md" />
           <div>
             <h3 className="text-sm font-semibold text-text-primary leading-tight">
               {membro.name}
             </h3>
-            <p className="text-xs text-text-tertiary mt-0.5 line-clamp-1">{membro.persona}</p>
+            <p className="text-xs text-text-tertiary mt-0.5 line-clamp-1">{membro.description}</p>
           </div>
         </div>
-        <MembroStatusBadge status={membro.status} />
+        <MembroStatusBadge status={membro.is_active ? "active" : "archived"} />
       </div>
 
       {/* Orta: Prompt önizleme */}

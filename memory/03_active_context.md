@@ -1,33 +1,95 @@
 # Aktif Bağlam
 
-**Son güncelleme:** 2026-03-04
+**Son güncelleme:** 2026-03-06
 
 ## Şu An Neredeyiz?
 
-**Faz 6.5 kısmen tamamlandı.** Login flow bugged fix edildi (X-Tenant-Slug header + access_token response body). error.tsx + not-found.tsx, 5 loading.tsx skeleton, dashboard istatistik şeridi + kişisel selamlama + gerçek toplantı listesi, TopBar temizliği. TypeScript sıfır hata.
+**Meeting (realtime toplantı) feature bug'ları giderildi.** VoiceRoom artık `meetingApi` (apiFetch tabanlı) kullanıyor, `localhost:8000` hardcode'u kaldırıldı. `app/components/` duplicate klasörü temizlendi.
 
 ## Aktif Çalışma Konusu
 
-Faz 6.6 — Kalan MVP detayları
+Faz 6 — Meeting feature düzeltmeleri tamamlandı; sıradaki: Settings sayfasına MO_Integrations yönetim bölümü veya Dashboard gerçek stats
 
 ## Açık Sorular / Belirsizlikler
 
 - `/knowledge` URL tipi doküman ekleme: backend content_type="url" destekliyor mu doğrulanmalı
 - Faz 5 opsiyonelleri: Locust yük testi ve LangSmith hâlâ açık
+- `MO_Integrations` yönetim arayüzü (settings sayfasında entegrasyon ekleme/silme) henüz frontend'de yok
 
 ## Bir Sonraki Adım
 
-1. Faz 6.5 — Dashboard: gerçek membro stats + toplantı sayısı
-2. Faz 6.5 — `error.tsx` dosyaları (retry / hata recovery)
-3. Faz 6.5 — TopBar user menüsüne "Ayarlar" linki
-4. Faz 6.5 — Responsive: mobil için sidebar hamburger toggle
-5. (Opsiyonel) Faz 5 Locust & LangSmith tamamlama
+1. Settings sayfasına `MO_Integrations` yönetim bölümü (skill entegrasyon credential'larını buradan ekle/sil)
+2. Faz 6.6 — Dashboard: gerçek membro stats + toplantı sayısı
+3. (Opsiyonel) Faz 5 Locust & LangSmith tamamlama
 
-## Son Oturum Özeti (2026-03-04 — Login Bug Fix)
+## Son Oturum Özeti (2026-03-06 — Meeting Feature Bug Fix)
 
-**Login akışı iki bağımsız hata içeriyordu:**
-- `api.ts` — `apiFetch` ve streaming chat fetch'i `X-Tenant-Slug` header'ı göndermiyordu; backend tenant_middleware bu header olmadan 400 `tenant_context_required` hatası fırlatıyordu. `getTenantSlug()` helper'ı eklendi: `testco.localhost` → `testco` çıkararak tüm requestlere `X-Tenant-Slug` header'ı ekleniyor.
-- `auth.py` — `/auth/login` ve `/auth/register` endpointleri `access_token`'ı yalnızca cookie'ye yazıyor, response body'e eklemiyordu. Frontend `tokens.access_token` okuyup `undefined` ile `setTokens()` çağırıyordu. Her iki endpoint de artık `access_token` + `token_type` body'de de döndürüyor.
+**Sorun 1 — API localhost:8000:**
+`VoiceRoom.tsx`'in kendi standalone `createMeeting`/`endMeeting` fonksiyonları `apiBase = "http://localhost:8000"` hardcode'u kullanıyordu. `meetingApi` `api.ts`'de zaten mevcut olduğu halde kullanılmıyordu.
+
+**Çözüm:** VoiceRoom'daki standalone fetch fonksiyonları ve `apiBase` prop'u kaldırıldı. `meetingApi.create()` + `meetingApi.end()` kullanılıyor — bunlar `apiFetch` tabanlı olduğu için `X-Tenant-Slug` header otomatik ekleniyor ve relative URL ile nginx subdomain routing devreye giriyor.
+
+**Sorun 2 — Duplicate components klasörü:**
+`frontend/src/app/components/` (sadece VoiceRoom.tsx içeriyordu) + `frontend/src/components/` aynı anda vardı.
+
+**Çözüm:** `VoiceRoom.tsx` `src/components/` altına taşındı (refactored), `app/components/` silindi, `meeting/[roomId]/page.tsx` import path'i `@/app/components/VoiceRoom` → `@/components/VoiceRoom` güncellendi.
+
+**Etkilenen dosyalar:**
+- `frontend/src/components/VoiceRoom.tsx` — yeni konum + meetingApi kullanımı
+- `frontend/src/app/meeting/[roomId]/page.tsx` — import path düzeltildi
+- `frontend/src/app/components/` — silindi
+
+## Son Oturum Özeti (2026-03-06 — Chat Mesaj Persistence Fix)
+
+**Sorun:** Chat stream sonrası mesajlar `MO_Messages`'a kaydedilmiyordu.
+
+**Kök nedenler (2 katmanlı):**
+1. `Depends(get_db)` ile enjekte edilen session, `chat_stream()` fonksiyonu döndüğünde (StreamingResponse öncesi) kapanıyordu; generator'ın `finally` bloğu kapalı session kullanmaya çalışıyordu.
+2. `models.py`'deki `Conversation`/`Message` sınıfları gerçek DB şemasıyla uyuşmuyordu: `type`, `started_at`, `ended_at` sütunları DB'de yok; `user_id` DB'de NOT NULL; `metadata_json` DB'de JSONB NOT NULL.
+
+**Yapılan düzeltmeler:**
+- `chat.py` → `chat_stream` endpoint'inden `Depends(get_db)` kaldırıldı; generator `finally` bloğunda `get_db_session(tenant_id=tenant_id)` kullanılarak taze RLS-aware session açılıyor
+- `chat.py` → `_persist_messages` imzasına `user_id` parametresi eklendi
+- `chat.py` → `request.state.user_id` her iki endpoint'ten de alınıp persist'e geçiriliyor
+- `models.py` → `Conversation`: `membro_id` + `user_id` NOT NULL yapıldı, `type`/`started_at`/`ended_at` kaldırıldı, `title`/`updated_at` eklendi
+- `models.py` → `Message`: `tokens_used` kaldırıldı, `metadata_json: JSONB` eklendi
+- `_persist_messages` → `Conversation(title=user_content[:80])`, mesajlar artık Python explicit timestamp kullanıyor (user_ts, user_ts + 1ms) — server_default tx içinde aynı `now()` döndürdüğünden sıralama bozuktu
+
+**Doğrulama:**
+- `testco.localhost/api/v1/agents/{id}/chat/stream` → SSE akışı + DB'de 2 satır kayıt
+- `testco.localhost/api/v1/agents/{id}/history` → doğru user→assistant sırasıyla tüm mesajlar
+
+## Son Oturum Özeti (2026-03-05 — SYS_Membros + CreateMembroModal)
+
+**Backend (tamamen tamamlandı):**
+- `db/models.py` → SysMembro, SysSkill (is_self_skill), SysCapability, SysMembroSkill, MoIntegration modelleri + Membro'ya sys_membro_id (NOT NULL FK) + extra_prompt
+- `alembic/0004_sys_tables.py` → 5 tablo, 12 şablon seed, Memory self-skill + knowledge_search capability, CROSS JOIN SYS_MembroSkills, MO_Integrations RLS
+- `api/v1/sys_membros.py` → GET /sys-membros/ (public, no auth), GET /sys-membros/{id}/skills (has_integration hesabı: self_skill → always true)
+- `api/v1/integrations.py` → CRUD + pgp_sym_encrypt(credentials_enc, settings.secret_key); GET response'da credentials dönmez
+- `api/v1/membros.py` → MembroCreate: sys_membro_id (zorunlu) + extra_prompt; system_prompt otomatik birleştirildi; MembroOut güncellendi
+- `main.py` + `middleware/auth.py` → yeni router mount + PUBLIC_PREFIXES tuple
+
+**Frontend (tamamen tamamlandı):**
+- `types/index.ts` → SysMembro, SysSkillWithStatus, Integration, CreateIntegrationPayload; CreateMembroPayload yeniden tasarlandı
+- `lib/api.ts` → sysMembroApi (list, getSkills) + integrationApi (list, create, delete)
+- `CreateMembroModal.tsx` → tamamen yeniden yazıldı: TemplateCatalog (sol, 320px, 12 şablon kartı) + ConfigPanel (sağ: ekstra prompt textarea + SkillRow toggle'lar + Oluştur butonu); TypeScript 0 hata
+
+**Tasarım kararları:**
+- is_self_skill=true → skill her zaman aktif, Lock "Dahili" badge, toggle yok
+- has_integration=false → AlertCircle "Entegrasyon yok" badge, toggle disabled
+- Kullanıcı şablon seçmeden form açılmaz (sağ panel boş durum)
+
+## Son Oturum Özeti (2026-03-05 — Login fix + Faz 6.6 Responsive Sidebar)
+
+**Login fix:**
+- `api.ts` → `getTenantSlug()` helper eklendi; tüm requestler `X-Tenant-Slug` header gönderir
+- `auth.py` → `/auth/login` ve `/auth/register` artık `access_token` body'de de döndürüyor
+
+**Responsive Sidebar:**
+- `appStore.ts` → `sidebarMobileOpen`, `toggleSidebarMobile`, `closeSidebarMobile`
+- `TopBar.tsx` → hamburger `Menu` ikonu (mobil sol, `md:hidden`)
+- `Sidebar.tsx` → `fixed` overlay + rota değişince `useEffect` ile otomatik kapanma
+- `MobileSidebarBackdrop.tsx` → yeni bileşen
 
 ## Son Oturum Özeti (2026-03-04 — Faz 6.3 + 6.4)
 

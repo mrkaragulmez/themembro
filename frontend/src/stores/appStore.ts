@@ -9,10 +9,15 @@ import { persist } from "zustand/middleware";
 import type { Membro } from "@/types";
 
 interface AppStore {
-  // Sidebar
+  // Sidebar — masaüstü
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
+
+  // Sidebar — mobil overlay
+  sidebarMobileOpen: boolean;
+  toggleSidebarMobile: () => void;
+  closeSidebarMobile: () => void;
 
   // Active membro (detay sayfasında geçerli)
   activeMembro: Membro | null;
@@ -36,6 +41,12 @@ export const useAppStore = create<AppStore>()(
       toggleSidebar: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
+
+      // Sidebar — mobil overlay
+      sidebarMobileOpen: false,
+      toggleSidebarMobile: () =>
+        set((s) => ({ sidebarMobileOpen: !s.sidebarMobileOpen })),
+      closeSidebarMobile: () => set({ sidebarMobileOpen: false }),
 
       // Active membro
       activeMembro: null,

@@ -59,7 +59,7 @@ export function CreateMeetingModal() {
     setSelectedMembroId("");
   }
 
-  const activeMembros = membros.filter((m) => m.status === "active");
+  const activeMembros = membros.filter((m) => m.is_active);
 
   return (
     <Modal open={createMeetingModalOpen} onClose={handleClose} size="sm" closeOnBackdrop>
@@ -101,7 +101,7 @@ export function CreateMeetingModal() {
                         : "border-transparent hover:bg-surface-50 text-text-secondary hover:text-text-primary"
                     )}
                   >
-                    <Avatar name={m.name} color={m.color} size="xs" />
+                    <Avatar name={m.name} size="xs" />
                     <span className="font-medium">{m.name}</span>
                   </button>
                 ))

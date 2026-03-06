@@ -85,7 +85,12 @@ class Membro(Base):
     created_at:    Mapped[datetime]     = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:    Mapped[datetime]     = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Faz 6 — Sistem membro şablonu referansı
+    sys_membro_id: Mapped[uuid.UUID]    = mapped_column(UUID(as_uuid=True), ForeignKey("SYS_Membros.id", ondelete="RESTRICT"), nullable=False)
+    extra_prompt:  Mapped[str | None]   = mapped_column(Text, nullable=True)
+
     tenant:        Mapped["Tenant"]            = relationship(back_populates="membros")
+    sys_membro:    Mapped["SysMembro"]         = relationship(back_populates="membros")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="membro")
 
 
@@ -94,15 +99,15 @@ class Membro(Base):
 class Conversation(Base):
     __tablename__ = "MO_Conversations"
 
-    id:         Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id:  Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
-    membro_id:  Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Membros.id", ondelete="SET NULL"), nullable=True)
-    user_id:    Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Users.id", ondelete="SET NULL"), nullable=True)
-    type:       Mapped[str]         = mapped_column(String(16), nullable=False, default="chat")  # chat | voice
-    started_at: Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
-    ended_at:   Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    id:         Mapped[uuid.UUID]      = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id:  Mapped[uuid.UUID]      = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id:    Mapped[uuid.UUID]      = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Users.id", ondelete="CASCADE"), nullable=False, index=True)
+    membro_id:  Mapped[uuid.UUID]      = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Membros.id", ondelete="CASCADE"), nullable=False)
+    title:      Mapped[str | None]     = mapped_column(String(255))
+    created_at: Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime]       = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    membro:   Mapped["Membro"]       = relationship(back_populates="conversations")
+    membro:   Mapped["Membro"]        = relationship(back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(back_populates="conversation")
 
 
@@ -112,11 +117,11 @@ class Message(Base):
     __tablename__ = "MO_Messages"
 
     id:              Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Conversations.id", ondelete="CASCADE"), nullable=False, index=True)
-    role:            Mapped[str]       = mapped_column(String(16), nullable=False)  # user | assistant | system
+    tenant_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    role:            Mapped[str]       = mapped_column(String(20), nullable=False)  # user | assistant | system
     content:         Mapped[str]       = mapped_column(Text, nullable=False)
-    tokens_used:     Mapped[int | None] = mapped_column()
+    metadata_json:   Mapped[dict]      = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
     created_at:      Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
@@ -193,3 +198,88 @@ class MeetingTranscript(Base):
     created_at:  Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     meeting: Mapped["Meeting"] = relationship(back_populates="transcripts")
+
+
+# ─── SYS_Membros ───────────────────────────────────────────────
+# Sistem membro şablonları — her tenant bu şablonlardan birini temel alır
+
+class SysMembro(Base):
+    __tablename__ = "SYS_Membros"
+
+    id:                 Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug:               Mapped[str]        = mapped_column(String(100), nullable=False, unique=True, index=True)
+    name:               Mapped[str]        = mapped_column(String(255), nullable=False)
+    role:               Mapped[str]        = mapped_column(String(255), nullable=False)
+    description:        Mapped[str | None] = mapped_column(Text, nullable=True)
+    base_system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active:          Mapped[bool]       = mapped_column(Boolean, nullable=False, default=True)
+
+    membros: Mapped[list["Membro"]]          = relationship(back_populates="sys_membro")
+    skills:  Mapped[list["SysMembroSkill"]]  = relationship(back_populates="sys_membro")
+
+
+# ─── SYS_Skills ────────────────────────────────────────────────
+# Beceri (skill) şablonları — is_self_skill=True olanlar sistemin kendi sağladığı
+
+class SysSkill(Base):
+    __tablename__ = "SYS_Skills"
+
+    id:            Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug:          Mapped[str]        = mapped_column(String(100), nullable=False, unique=True, index=True)
+    name:          Mapped[str]        = mapped_column(String(255), nullable=False)
+    description:   Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_self_skill: Mapped[bool]       = mapped_column(Boolean, nullable=False, default=False)
+    is_active:     Mapped[bool]       = mapped_column(Boolean, nullable=False, default=True)
+
+    capabilities:  Mapped[list["SysCapability"]] = relationship(back_populates="skill")
+    membro_links:  Mapped[list["SysMembroSkill"]] = relationship(back_populates="skill")
+    integrations:  Mapped[list["MoIntegration"]]  = relationship(back_populates="skill")
+
+
+# ─── SYS_Capabilities ──────────────────────────────────────────
+# Her skill'in alt yetenekleri (MCP tool karşılığı)
+
+class SysCapability(Base):
+    __tablename__ = "SYS_Capabilities"
+
+    id:            Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    skill_id:      Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("SYS_Skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    slug:          Mapped[str]         = mapped_column(String(100), nullable=False, unique=True, index=True)
+    name:          Mapped[str]         = mapped_column(String(255), nullable=False)
+    description:   Mapped[str | None]  = mapped_column(Text, nullable=True)
+    config_schema: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    is_active:     Mapped[bool]        = mapped_column(Boolean, nullable=False, default=True)
+
+    skill: Mapped["SysSkill"] = relationship(back_populates="capabilities")
+
+
+# ─── SYS_MembroSkills ──────────────────────────────────────────
+# Hangi membro şablonu hangi skill'leri destekler (many-to-many)
+
+class SysMembroSkill(Base):
+    __tablename__ = "SYS_MembroSkills"
+
+    sys_membro_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("SYS_Membros.id", ondelete="CASCADE"), primary_key=True)
+    sys_skill_id:  Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("SYS_Skills.id",  ondelete="CASCADE"), primary_key=True)
+
+    sys_membro: Mapped["SysMembro"] = relationship(back_populates="skills")
+    skill:      Mapped["SysSkill"]  = relationship(back_populates="membro_links")
+
+
+# ─── MO_Integrations ───────────────────────────────────────────
+# Tenant'ların 3rd party entegrasyonları — credentials pgcrypto ile şifrelenir
+
+class MoIntegration(Base):
+    __tablename__ = "MO_Integrations"
+
+    id:              Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id:       Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), ForeignKey("MO_Tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    sys_skill_id:    Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), ForeignKey("SYS_Skills.id", ondelete="RESTRICT"), nullable=False, index=True)
+    name:            Mapped[str]        = mapped_column(String(255), nullable=False)
+    credentials_enc: Mapped[str | None] = mapped_column(Text, nullable=True)   # pgp_sym_encrypt ile şifreli JSON
+    is_active:       Mapped[bool]       = mapped_column(Boolean, nullable=False, default=True)
+    created_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tenant: Mapped["Tenant"]   = relationship()
+    skill:  Mapped["SysSkill"] = relationship(back_populates="integrations")

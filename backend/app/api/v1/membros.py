@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.db.models import Membro
+from app.db.models import Membro, SysMembro
 
 router = APIRouter(prefix="/membros", tags=["membros"])
 
@@ -17,9 +17,10 @@ router = APIRouter(prefix="/membros", tags=["membros"])
 # ─── Şemalar ───────────────────────────────────────────────────
 
 class MembroCreate(BaseModel):
-    name: str
+    sys_membro_id: UUID
+    name: str | None = None
     description: str | None = None
-    system_prompt: str | None = None
+    extra_prompt: str | None = None
     tools_json: list | None = None
 
 class MembroUpdate(BaseModel):
@@ -32,9 +33,11 @@ class MembroUpdate(BaseModel):
 class MembroOut(BaseModel):
     id: UUID
     tenant_id: UUID
+    sys_membro_id: UUID | None
     name: str
     description: str | None
     system_prompt: str | None
+    extra_prompt: str | None
     tools_json: list | None
     is_active: bool
 
@@ -72,7 +75,30 @@ async def create_membro(
     db: AsyncSession = Depends(get_db),
 ):
     tenant_id = _require_tenant(request)
-    membro = Membro(**body.model_dump(), tenant_id=tenant_id)
+
+    # SYS_Membros şablonunu getir
+    sys_membro = (await db.execute(
+        select(SysMembro).where(SysMembro.id == body.sys_membro_id, SysMembro.is_active.is_(True))
+    )).scalar_one_or_none()
+
+    if not sys_membro:
+        raise HTTPException(status_code=404, detail="sys_membro_not_found")
+
+    # system_prompt = base + extra_prompt wrap'i
+    prompt_parts = [sys_membro.base_system_prompt or ""]
+    if body.extra_prompt and body.extra_prompt.strip():
+        prompt_parts.append(f"\n\nAdditional instructions:\n{body.extra_prompt.strip()}")
+    system_prompt = "".join(prompt_parts).strip() or None
+
+    membro = Membro(
+        tenant_id=tenant_id,
+        sys_membro_id=body.sys_membro_id,
+        name=body.name or sys_membro.name,
+        description=body.description or sys_membro.description,
+        extra_prompt=body.extra_prompt,
+        system_prompt=system_prompt,
+        tools_json=body.tools_json or [],
+    )
     db.add(membro)
     await db.flush()
     return membro
@@ -115,6 +141,17 @@ async def update_membro(
 
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(membro, field, value)
+
+    # extra_prompt güncellendiyse system_prompt'u yeniden hesapla
+    if body.extra_prompt is not None or body.description is not None:
+        # sys_membro'yu lazy yükle
+        sys_membro = await db.get(SysMembro, membro.sys_membro_id)
+        if sys_membro:
+            prompt_parts = [sys_membro.base_system_prompt or ""]
+            ep = membro.extra_prompt
+            if ep and ep.strip():
+                prompt_parts.append(f"\n\nAdditional instructions:\n{ep.strip()}")
+            membro.system_prompt = "".join(prompt_parts).strip() or None
 
     return membro
 

@@ -13,6 +13,10 @@ import type {
   KnowledgeDoc,
   ChatMessage,
   ChatRequest,
+  SysMembro,
+  SysSkillWithStatus,
+  Integration,
+  CreateIntegrationPayload,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -134,19 +138,45 @@ export const membroApi = {
     apiFetch<void>(`/api/v1/membros/${id}`, { method: "DELETE" }),
 };
 
+// ─── SYS Membros ───────────────────────────────────────────────────────────
+
+export const sysMembroApi = {
+  /** Tüm sistem şablonlarını listeler. Auth gerektirmez. */
+  list: () => apiFetch<SysMembro[]>("/api/v1/sys-membros/"),
+
+  /** Şablonun skill listesini tenant entegrasyon durumuyla döndürür. */
+  getSkills: (sysMembroId: string) =>
+    apiFetch<SysSkillWithStatus[]>(`/api/v1/sys-membros/${sysMembroId}/skills`),
+};
+
+// ─── Integrations ──────────────────────────────────────────────────────────
+
+export const integrationApi = {
+  list: () => apiFetch<Integration[]>("/api/v1/integrations/"),
+
+  create: (payload: CreateIntegrationPayload) =>
+    apiFetch<Integration>("/api/v1/integrations/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  delete: (id: string) =>
+    apiFetch<void>(`/api/v1/integrations/${id}`, { method: "DELETE" }),
+};
+
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export const chatApi = {
-  /** Geçmiş mesajları çeker */
-  history: (membroId: string) =>
-    apiFetch<ChatMessage[]>(`/api/v1/chat/?membro_id=${membroId}`),
+  /** Geçmiş mesajları çeker — son 50 mesaj, eski→yeni sıralı */
+  history: (membroId: string): Promise<ChatMessage[]> =>
+    apiFetch<ChatMessage[]>(`/api/v1/agents/${membroId}/history`),
 
-  /** Streaming chat — ReadableStream döner */
-  stream: async (payload: ChatRequest): Promise<ReadableStream<Uint8Array>> => {
+  /** Streaming chat — SSE akışından token'ları çıkarır, saf metin döner */
+  stream: async (membroId: string, payload: ChatRequest): Promise<ReadableStream<Uint8Array>> => {
     const token = getAccessToken();
 
     const slug = getTenantSlug();
-    const res = await fetch(`${API_BASE}/api/v1/chat/`, {
+    const res = await fetch(`${API_BASE}/api/v1/agents/${membroId}/chat/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -163,8 +193,8 @@ export const chatApi = {
     }
 
     if (!res.ok || !res.body) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.detail ?? `HTTP ${res.status}`);
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody?.detail ?? `HTTP ${res.status}`);
     }
 
     return res.body;

@@ -21,6 +21,11 @@ PUBLIC_PATHS = {
     "/api/v1/auth/register",
 }
 
+# Bu prefix'ler ile başlayan path'ler auth gerektirmez (GET-only sistem verileri)
+PUBLIC_PREFIXES = (
+    "/api/v1/sys-membros",
+)
+
 
 async def auth_middleware(request: Request, call_next) -> Response:
     """
@@ -36,7 +41,10 @@ async def auth_middleware(request: Request, call_next) -> Response:
     request.state.user_id   = None
     request.state.user_role = None
 
-    is_public = request.url.path in PUBLIC_PATHS
+    is_public = (
+        request.url.path in PUBLIC_PATHS
+        or request.url.path.startswith(PUBLIC_PREFIXES)
+    )
 
     # Token'ı çöz: önce Authorization header, sonra cookie
     token: str | None = None

@@ -1,9 +1,6 @@
 # backend/app/main.py
-# Faz 1 + Faz 2 + Faz 4 + Faz 5 — FastAPI uygulama giriş noktası
-# Faz 2 güncel: lifespan ile PostgreSQL checkpointer başlatılır;
-# derlenen LangGraph grafiği app.state.graph üzerinden paylaşılır.
-# Faz 4 güncel: meetings (sesli toplantı) router eklendi.
-# Faz 5 güncel: structured logging konfigurasyonu + rate limiting eklendi.
+# Faz 1 + Faz 2 + Faz 4 + Faz 5 + Faz 6 — FastAPI uygulama giriş noktası
+# Faz 6 güncel: sys_membros + integrations router'ları eklendi.
 
 import structlog
 from contextlib import asynccontextmanager
@@ -28,6 +25,8 @@ from app.api.v1 import membros as membros_router
 from app.api.v1 import chat as chat_router
 from app.api.v1 import knowledge as knowledge_router
 from app.api.v1 import meetings as meetings_router
+from app.api.v1 import sys_membros as sys_membros_router
+from app.api.v1 import integrations as integrations_router
 from mcp_server.server import create_mcp_app
 
 # Faz 5: Loglama yapılandırılıyor — diğer import'lardan önce çağrılmalı
@@ -129,11 +128,13 @@ app.add_exception_handler(Exception, global_exception_handler)
 
 # ─── Router'lar ────────────────────────────────────────────────
 
-app.include_router(auth_router.router,      prefix="/api/v1")
-app.include_router(membros_router.router,   prefix="/api/v1")
-app.include_router(chat_router.router,      prefix="/api/v1")
-app.include_router(knowledge_router.router, prefix="/api/v1")
-app.include_router(meetings_router.router,  prefix="/api/v1")
+app.include_router(auth_router.router,         prefix="/api/v1")
+app.include_router(membros_router.router,       prefix="/api/v1")
+app.include_router(chat_router.router,          prefix="/api/v1")
+app.include_router(knowledge_router.router,     prefix="/api/v1")
+app.include_router(meetings_router.router,      prefix="/api/v1")
+app.include_router(sys_membros_router.router,   prefix="/api/v1")
+app.include_router(integrations_router.router,  prefix="/api/v1")
 
 # ─── MCP Sunucusu (sub-application) ────────────────────────────────────────
 

@@ -69,7 +69,7 @@ function MembroSpotlight({ membros }: { membros: Membro[] }) {
   const { openCreateMeeting } = useAppStore();
 
   const active = membros
-    .filter((m) => m.status !== "archived")
+    .filter((m) => m.is_active)
     .sort(
       (a, b) =>
         new Date(b.last_interaction_at ?? 0).getTime() -
@@ -92,12 +92,12 @@ function MembroSpotlight({ membros }: { membros: Membro[] }) {
     <ul className="divide-y divide-border-default">
       {active.map((m) => (
         <li key={m.id} className="flex items-center gap-3 py-3.5 group">
-          <Avatar name={m.name} color={m.color} size="sm" />
+          <Avatar name={m.name} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">{m.name}</p>
-            <p className="text-xs text-text-tertiary truncate">{m.persona}</p>
+            <p className="text-xs text-text-tertiary truncate">{m.description}</p>
           </div>
-          <MembroStatusBadge status={m.status} />
+          <MembroStatusBadge status={m.is_active ? "active" : "archived"} />
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => router.push(`/membro/${m.id}`)}
@@ -151,7 +151,7 @@ export default function DashboardPage() {
     queryFn: () => knowledgeApi.list(),
   });
 
-  const activeMembros = membros.filter((m) => m.status === "active").length;
+  const activeMembros = membros.filter((m) => m.is_active).length;
   const activeMeetings = meetings.filter((m) => m.status === "active").length;
 
   return (

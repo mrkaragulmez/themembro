@@ -1,6 +1,6 @@
 # Proje Durumu
 
-**Son güncelleme:** 2026-03-04 (Faz 6 tanımlandı)
+**Son güncelleme:** 2026-03-06 (Chat mesaj persistence fix tamamlandı)
 
 ## Faz Durumları
 
@@ -97,6 +97,24 @@
   - `.env`'e `DATABASE_URL` eklendi (doğru şifre)
   - `conftest.py`: `python-dotenv` ile `.env` sync + `asyncio_default_test_loop_scope=session`
   - `test_api_security.py`: tenant middleware bypass eden auth testleri düzeltildi (X-Tenant-Slug kaldırıldı)
+
+- [x] **Faz 6.6 — Responsive Sidebar:**
+  - `appStore.ts` → `sidebarMobileOpen`, `toggleSidebarMobile`, `closeSidebarMobile`
+  - `TopBar.tsx` → `Menu` ikonu ile hamburger butonu (mobil sol, `md:hidden`)
+  - `Sidebar.tsx` → `fixed` overlay + `useEffect` ile rota değişince otomatik kapanma
+  - `MobileSidebarBackdrop.tsx` → yeni bileşen; dış tıkla sidebar kapanır
+
+- [x] **Faz 6 — SYS_Membros Mimarisi (yeni feature):**
+  - `db/models.py` → 5 yeni model: SysMembro, SysSkill, SysCapability, SysMembroSkill, MoIntegration; Membro'ya `sys_membro_id` FK + `extra_prompt`
+  - `alembic/versions/0004_sys_tables.py` → 5 tablo + 12 SYS_Membros seed + Memory skill + knowledge_search capability + SYS_MembroSkills (12 × Memory) + MO_Integrations RLS
+  - `api/v1/sys_membros.py` → GET /sys-membros/ (public) + GET /sys-membros/{id}/skills (has_integration hesabı)
+  - `api/v1/integrations.py` → CRUD + pgp_sym_encrypt credentials
+  - `api/v1/membros.py` → MembroCreate: `sys_membro_id` zorunlu, `extra_prompt` opsiyonel, otomatik system_prompt birleştirme
+  - `main.py` → yeni router'lar mount edildi (sys_membros, integrations)
+  - `middleware/auth.py` → `PUBLIC_PREFIXES = ("/api/v1/sys-membros",)` tuple eklendi
+  - `types/index.ts` → SysMembro, SysSkillWithStatus, Integration, CreateIntegrationPayload tipleri; Membro + CreateMembroPayload güncellendi
+  - `lib/api.ts` → `sysMembroApi.list()`, `sysMembroApi.getSkills()`, `integrationApi` CRUD
+  - `CreateMembroModal.tsx` → tamamen yeniden yazıldı: solda TemplateCatalog (12 kart), sağda ConfigPanel (ekstra prompt + SkillRow toggle'lar)
 
 ## Devam Eden Görevler
 

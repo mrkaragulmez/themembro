@@ -9,10 +9,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, LogOut, Settings, ChevronDown } from "lucide-react";
+import { Bell, LogOut, Settings, ChevronDown, Menu } from "lucide-react";
 import { clsx } from "clsx";
 
 import { clearTokens } from "@/lib/api";
+import { useAppStore } from "@/stores/appStore";
 import { Avatar } from "@/components/ui/avatar";
 
 // Kullanıcı bilgisini localStorage'dan okur (login sırasında setTokens ile yazılır)
@@ -27,6 +28,7 @@ export function TopBar() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const user = useUserInfo();
+  const toggleSidebarMobile = useAppStore((s) => s.toggleSidebarMobile);
 
   function handleLogout() {
     clearTokens();
@@ -35,8 +37,15 @@ export function TopBar() {
 
   return (
     <header className="h-14 flex items-center justify-between px-5 border-b border-border-default bg-surface-0 shrink-0">
-      {/* Sol: boşluk (sidebar logosu ayrı) */}
-      <div />
+      {/* Sol: mobilde hamburger, masaüstünde boşluk */}
+      <button
+        onClick={toggleSidebarMobile}
+        className="md:hidden p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-50 transition-colors"
+        aria-label="Menüyü aç/kapat"
+      >
+        <Menu size={20} />
+      </button>
+      <div className="hidden md:block" />
 
       {/* Sağ: aksiyonlar */}
       <div className="flex items-center gap-2">

@@ -22,7 +22,7 @@ export default function MembroListPage() {
     queryFn: membroApi.list,
   });
 
-  const visible = membros.filter((m) => m.status !== "archived");
+  const visible = membros.filter((m) => m.is_active);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">

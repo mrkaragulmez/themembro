@@ -4,7 +4,23 @@ Her önemli karar tarih ve gerekçesiyle buraya kaydedilir. Bir karar değişirs
 
 ---
 
-## [2026-03-04] Login Flow: X-Tenant-Slug header + access_token response body
+## [2026-03-06] StreamingResponse + DB Persistence: get_db_session ile taze session
+
+**Karar:** `chat_stream` SSE endpoint'inde mesaj kalıcılığı için `Depends(get_db)` kaldırıldı; generator `finally` bloğunda `get_db_session(tenant_id=tenant_id)` ile taze session açılıyor.
+**Gerekçe:** FastAPI dependency injection, route fonksiyonu döndüğünde (yani `StreamingResponse()` oluşturulup döndürüldüğünde) bağımlılıkları kapatır. Generator bu noktada henüz çalışmamıştır; `finally` bloğu stream tamamlandıktan sonra çalışır. Bu nedenle enjekte edilen session kapalı olur. `get_db_session` ise `@asynccontextmanager` ile `SET LOCAL app.current_tenant_id` RLS bağlamını da kurar.
+**Alternatifler değerlendirildi:** `BackgroundTasks` (reply_content kapanımını gerektirir, lifecycle sorunu önceden çözülmüş — reddedildi), bare `AsyncSessionLocal()` (RLS SET LOCAL eksik, INSERT'ler policy ile engellenir — reddedildi).
+
+---
+
+## [2026-03-06] Message Timestamp Sıralaması: Python explicit datetime + 1ms offset
+
+**Karar:** `_persist_messages` içinde user mesajı `datetime.now(timezone.utc)`, assistant mesajı `now + timedelta(milliseconds=1)` ile INSERT ediliyor.
+**Gerekçe:** `server_default=func.now()` PostgreSQL'de aynı transaction içindeki tüm INSERT'lere aynı `now()` değerini atar. User ve assistant mesajı aynı transaction'da eklendiğinden `created_at` eşit olur ve ORDER BY sırası non-deterministik. 1ms offset ile kullanıcı mesajı her zaman asistan mesajından önce sıralanır.
+**Alternatifler değerlendirildi:** Serial ID sütunu ekleme (migration gerektirir — ertelendi), flush arasındaki server `now()` farkı (aynı tx içinde PostgreSQL `now()` sabit — geçersiz), UUID v7 (zaman bazlı, implementasyon karmaşıklığı — reddedildi).
+
+---
+
+
 
 **Karar:** Frontend `apiFetch` tüm requestlere `X-Tenant-Slug` header'ını ekler; backend `/auth/login` ve `/auth/register` endpointleri `access_token`'ı hem cookie hem response body'e yazar.
 **Gerekçe:** Backend `tenant_middleware` tenant'ı `X-Tenant-Slug` header'ından çözüyor. Frontend `http://testco.localhost`'tan `http://localhost:8000`'e istek attığında subdomain bilgisi kayboluyordu. `getTenantSlug()` helper'ı `window.location.hostname`'den slug'ı çıkarıp tüm requestlere ekler. İkinci sorun: backend token'ı sadece cookie'ye yazıyordu ama frontend `tokens.access_token` bekliyordu (localStorage auth flow); body'e de eklendi.

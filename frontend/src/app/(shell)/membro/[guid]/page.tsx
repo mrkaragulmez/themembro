@@ -48,7 +48,7 @@ function MembroDetailPanel({
   const toast = useToast();
 
   const archiveMutation = useMutation({
-    mutationFn: () => membroApi.update(membroId, { status: "archived" }),
+    mutationFn: () => membroApi.update(membroId, { is_active: false }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["membros"] });
       toast.success("Membro arşivlendi.");
@@ -73,12 +73,12 @@ function MembroDetailPanel({
       {/* Üst */}
       <div className="px-4 py-4 border-b border-border-default">
         <div className="flex items-start gap-3">
-          <Avatar name={membro.name} color={membro.color} size="md" />
+          <Avatar name={membro.name} size="md" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text-primary leading-tight truncate">
               {membro.name}
             </p>
-            <MembroStatusBadge status={membro.status} />
+            <MembroStatusBadge status={membro.is_active ? "active" : "archived"} />
           </div>
         </div>
 
@@ -117,7 +117,7 @@ function MembroDetailPanel({
           <p className="font-semibold text-text-tertiary uppercase tracking-widest mb-1">
             Persona
           </p>
-          <p className="text-text-secondary leading-relaxed">{membro.persona || "—"}</p>
+          <p className="text-text-secondary leading-relaxed">{membro.description || "—"}</p>
         </div>
 
         <div>
@@ -129,13 +129,13 @@ function MembroDetailPanel({
           </p>
         </div>
 
-        {membro.tools.length > 0 && (
+        {(membro.tools_json ?? []).length > 0 && (
           <div>
             <p className="font-semibold text-text-tertiary uppercase tracking-widest mb-1">
               Yetenekler
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {membro.tools.map((tool) => (
+              {(membro.tools_json ?? []).map((tool) => (
                 <span
                   key={tool}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-100 text-text-secondary"
@@ -202,16 +202,34 @@ export default function MembroDetailPage({ params }: { params: Params }) {
     setStreamingText("");
 
     try {
-      const stream = await chatApi.stream({ membro_id: guid, message: userMsg.content });
+      const stream = await chatApi.stream(guid, { message: userMsg.content });
       const reader = stream.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
       let accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setStreamingText(accumulated);
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE satırlarını parse et: "data: {...}\n\n"
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? ""; // eksik son satırı buffer'da tut
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.type === "token" && evt.content) {
+              accumulated += evt.content;
+              setStreamingText(accumulated);
+            }
+          } catch {
+            // parse hatası — geç
+          }
+        }
       }
 
       // Streaming bitti → kalıcı mesaj olarak ekle
@@ -244,9 +262,9 @@ export default function MembroDetailPage({ params }: { params: Params }) {
             </div>
           ) : membro ? (
             <>
-              <Avatar name={membro.name} color={membro.color} size="sm" />
+              <Avatar name={membro.name} size="sm" />
               <span className="text-sm font-semibold text-text-primary">{membro.name}</span>
-              <MembroStatusBadge status={membro.status} />
+              <MembroStatusBadge status={membro.is_active ? "active" : "archived"} />
             </>
           ) : null}
 
@@ -275,7 +293,7 @@ export default function MembroDetailPage({ params }: { params: Params }) {
               isStreaming={isStreaming}
               streamingText={streamingText}
               membroName={membro?.name}
-              membroColor={membro?.color}
+              membroColor={undefined}
             />
           )}
         </div>

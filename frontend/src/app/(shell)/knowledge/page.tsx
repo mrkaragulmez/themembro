@@ -218,7 +218,7 @@ export default function KnowledgePage() {
     onSettled: () => setDeletingId(null),
   });
 
-  const activeMembros = membros.filter((m) => m.status !== "archived");
+  const activeMembros = membros.filter((m) => m.is_active);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 animate-fade-in">
